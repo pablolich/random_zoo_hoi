@@ -1,6 +1,7 @@
 #This script tests the prediction of expected number of equilibria for a 
 #GLV with three-way higher order interactions
 
+using Random
 using HomotopyContinuation
 using LinearAlgebra
 using DelimitedFiles #to load and save files
@@ -51,15 +52,13 @@ function count_feasible_roots(system)
     length(valid_real_sols)
 end
 
-function main()
+function main(div_max, n_sim)
     """
     Get number of positive roots for n_sim simulations
     of n species, with n running from 3 to n_max
     """
-    div_max = 4
     div_vec = 3:div_max
     n_div = length(div_vec)
-    n_sim = 2
     #preallocate storing matrix, initialize iterator
     n_eq_mat = zeros(n_div*n_sim, 3)
     it = 1
@@ -68,7 +67,7 @@ function main()
         #solve n_sim realizations of communities with i spp
         print("Diversity: ")
         println(i)
-        for j in ProgressBar(1:n_sim)
+        for j in 1:n_sim
             B = random_B(i)
             system = build_system(B, i)
             n_zeros = count_feasible_roots(system)
@@ -80,5 +79,7 @@ function main()
     n_eq_mat
 end
 
-data = main()
+div_max = 4
+n_sim = 2
+data = main(div_max, n_sim)
 writedlm("../data/expected_n_roots.csv", data)
