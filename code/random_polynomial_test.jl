@@ -22,6 +22,13 @@ function build_equation_i(x, B, i)
     dot(x, B[:, :, i]*x)
 end
 
+function build_glv_i(x, r, A, B, i)
+    """
+    Build glv for species i
+    """
+    r[i] + dot(A[i,:], x) + dot(x, B[:, :, i]*x)
+end
+
 function build_system(B, n)
     """
     Build system of polynomials
@@ -29,12 +36,13 @@ function build_system(B, n)
     #declare dynamic variables
     @var x[1:n]
     #add a constant species
-    x = [x; 1]
+    #x = [x; 1]
     #initialize system of ODEs as empty list
     equations = []
     #construct set of dynamic equations
     for j in 1:n
-        eqn = build_equation_i(x, B, j)
+        #eqn = build_equation_i(x, B, j)
+        eqn = build_glv_i(x, r, A, B, i)
         append!(equations, eqn)
     end
     System(equations)
@@ -79,7 +87,7 @@ function main(div_max, n_sim)
     n_eq_mat
 end
 
-div_max = 4
-n_sim = 2
+div_max = 10
+n_sim = 2000
 data = main(div_max, n_sim)
 writedlm("../data/expected_n_roots.csv", data)
