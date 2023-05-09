@@ -24,18 +24,18 @@ function build_equation_i(x, B, i)
     dot(x, B[:, :, i]*x)
 end
 
-function build_eq_i(T_i, vec)
+function build_equation_i(T_i, vec)
     #get dimension of T
     dim = ndims(T_i)
     n = size(T_i,1)
     #initialize total
     tot = 0
     if dim == 3
-        return quadratic_form(T_i[:, :, i], vec)
+        return quadratic_form(T_i[:, :, i], vec[1:n-1])
     else 
         for j in 1:(n-1)
             tup_ind = tuple(repeat([Colon()], dim-1)...)
-            tot += build_eq_i(T_i[tup_ind...,j], vec)
+            tot += build_equation_i(T_i[tup_ind...,j], vec)
         end
     end
     return tot
@@ -49,6 +49,8 @@ function build_system(B, n)
     """
     Build system of polynomials
     """
+    #get dimension of hois
+    d = ndims(B)
     #declare dynamic variables
     @var x[1:n]
     #add a constant species
@@ -56,9 +58,9 @@ function build_system(B, n)
     #initialize system of ODEs as empty list
     equations = []
     #construct set of dynamic equations
-    for j in 1:n
-        eqn = build_equation_i(x, B, j)
-        #eqn = build_glv_i(x, r, A, B, i)
+    for i in 1:n
+        B_i = B[repeat([Colon()],d-1)...,i]
+        eqn = build_equation_i(B_i, x)
         append!(equations, eqn)
     end
     System(equations)
