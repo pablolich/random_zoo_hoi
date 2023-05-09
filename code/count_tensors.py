@@ -40,9 +40,11 @@ def count_Bs(n):
     #get total number of sign flips
     n_flips = 2**n
     #initialize storage
+    list_Bs_unique = list()
     list_Bs = list()
+    list_D = list()
     #sample random B
-    B = np.random.rand(n, n, n)
+    B = abs(np.random.rand(n, n, n))
     #get all sign flip vectors (1 is sign flip, 0 is no flip)
     flips_iter = it.product(range(2), repeat = n)
     #loop through all sign flips
@@ -55,20 +57,22 @@ def count_Bs(n):
         #construct new B
         B_flip = get_new_B(B, D_vec, n)
         #store if it hasn't been seen before
-        if is_new(list_Bs, B_flip):
-            list_Bs.append(B_flip)
-    return len(list_Bs)
+        list_Bs.append(B_flip)
+        list_D.append(D_vec)
+        if is_new(list_Bs_unique, B_flip):
+            list_Bs_unique.append(B_flip)
+    return (list_Bs_unique)
 
 def main(argv):
     '''Main function'''
     #number of species and total sign flips
-    n_vec = np.array([3,4,5,6]) 
-    n_Bs = list()
+    n_vec = np.array([3, 4, 5, 6]) 
+    n_eq = list()
     for i in n_vec:
         print("order of hois: ", i)
-        n_B_i = count_Bs(i)
-        n_Bs.append(n_B_i)
-    print('Number of different Bs up to a sign change: ', n_Bs)
+        list_Bs = count_Bs(i)
+        n_eq.append(len(list_Bs))
+    print('Number of different Bs up to a sign change: ', n_eq)
     return 0
 
 ## CODE ##
