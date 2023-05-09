@@ -14,3 +14,4 @@
 
 test if my results change with symmetric tensor slices.
 Test for dimension 2, different variances
+build output name outomatically
