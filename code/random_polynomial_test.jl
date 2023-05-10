@@ -67,7 +67,7 @@ function countpositive(system)
     Count number of positive solutions of polynomial system
     """
     #solve system
-    res = solve(system, show_progress = true)
+    res = solve(system, show_progress = false)
     #get only poisitive and real solutions
     valid_real_sols = filter(s -> all(s .> 0), real_solutions(res))
     #count them
@@ -109,11 +109,11 @@ end
 
 hoi_vec = [2 3 4 5 6]
 div_vec = [3 4 5]
-n_sim = 100
+n_sim = 2000
 var = 1
 data = main(div_vec, hoi_vec, n_sim, var)
 #save data
-max_div = string(max(div_vec))
-max_hoi = string(max(hoi_vec))
-output_name = "dim_"*max_hoi*"_div_"*max_hoi*"_s_"*n_sim
+max_hoi = string(maximum(hoi_vec))
+max_div = string(maximum(div_vec))
+output_name = "dim_"*max_hoi*"_div_"*max_hoi*"_s_"*string(n_sim)
 writedlm("../data/expected_n_roots"*output_name*".csv", data)
