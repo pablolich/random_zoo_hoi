@@ -6,46 +6,43 @@ using HomotopyContinuation
 using LinearAlgebra
 using DelimitedFiles #to load and save files
 
-function random_B(dim, n_spp, var)
+function randomtensor(d, n, var)
     """
     Sample entries from a tensor with dimmesions stored
     in dims from a gaussian distribution with mean 0 and sd 1
     """
-    #create tuple of tensor dimensions
-    dims_t = tuple(repeat([n_spp+1], dim)...)
+    #sample tensor of size (n+1) of d dimensions
     rng = MersenneTwister()
-    var*randn(rng, Float64, dims_t)
+    #mean 0, variance var
+    var*randn(rng, Float64, repeat([n + 1], d)...)
 end
 
-function build_equation_i(x, B, i)
+function equation_i(T_i, vec)
     """
-    Build equation as in the paper
+    Build GLV equation for species i with hois of dimension d  
     """
-    dot(x, B[:, :, i]*x)
-end
-
-function build_equation_i(T_i, i, vec)
     #get dimension of T
     dim = ndims(T_i)
     n = size(T_i,1)
     #initialize total
     tot = 0
-    if dim == 3
-        return quadratic_form(T_i[:,:,i], vec[1:n])
-    else 
-        for j in 1:(n-1)
-            tup_ind = tuple(repeat([Colon()], dim-1)...)
-            tot += build_equation_i(T_i[tup_ind...,j], i, vec)
+    if dim > 2
+        #hois are more than three-way, build polynomial recursively
+        for j in 1:n
+            slices = repeat([Colon()], dim-1)
+            tot += vec[j]*equation_i(T_i[slices...,j], vec)
         end
+    elseif dim == 2
+        #hoisa re three-way, compute quadratic form
+        return dot(vec, T_i*vec)
+    else
+        #no hois, compute linear form
+        return T_i'*vec
     end
     return tot
 end
 
-function quadratic_form(A, x)
-    dot(x, A*x)
-end
-
-function build_system(B, d, n)
+function getsystem(B, d, n)
     """
     Build system of polynomials
     """
@@ -57,14 +54,15 @@ function build_system(B, d, n)
     equations = []
     #construct set of dynamic equations
     for i in 1:n
+        #get tensor of interactions for species i
         B_i = B[repeat([Colon()],d-1)...,i]
-        eqn = build_equation_i(B_i, i, x)
+        eqn = equation_i(B_i, x)
         append!(equations, eqn)
     end
     System(equations)
 end
 
-function count_feasible_roots(system)
+function countpositive(system)
     """
     Count number of positive solutions of polynomial system
     """
@@ -97,9 +95,9 @@ function main(div_vec, hois_vec, n_sim, var)
             print("Diversity: ")
             println(n)
             for s in 1:n_sim
-                B = random_B(d, n, var)
-                system = build_system(B, d, n)
-                n_zeros = count_feasible_roots(system)
+                B = randomtensor(d, n, var)
+                system = getsystem(B, d, n)
+                n_zeros = countpositive(system)
                 add_row = [d n s n_zeros]
                 n_eq_mat[it,:] = add_row
                 it += 1
@@ -109,10 +107,13 @@ function main(div_vec, hois_vec, n_sim, var)
     n_eq_mat
 end
 
-div_vec = [3 4 5 6]
-hois_vec = [4 5 6]
-n_sim = 3000
+hoi_vec = [2 3 4 5 6]
+div_vec = [3 4 5]
+n_sim = 100
 var = 1
-data = main(div_vec, hois_vec, n_sim, var)
-output_name = "dim_3_6_div_3_6_s_3000"
+data = main(div_vec, hoi_vec, n_sim, var)
+#save data
+max_div = string(max(div_vec))
+max_hoi = string(max(hoi_vec))
+output_name = "dim_"*max_hoi*"_div_"*max_hoi*"_s_"*n_sim
 writedlm("../data/expected_n_roots"*output_name*".csv", data)

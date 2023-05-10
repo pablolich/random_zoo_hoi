@@ -15,3 +15,7 @@
 test if my results change with symmetric tensor slices.
 Test for dimension 2, different variances
 build output name outomatically
+
+#### May 10,2023
+
+Compare results with d = 2 to see the increase, and base research in known fact(s (1/2^n)
