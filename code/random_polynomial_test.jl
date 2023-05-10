@@ -107,11 +107,13 @@ function main(div_vec, hois_vec, n_sim, var)
     n_eq_mat
 end
 
-hoi_vec = [2 3 4 5 6]
-div_vec = [3 4 5]
-n_sim = 2000
+#hoi_vec = [2 3 4 5 6]
+#div_vec = [3 4 5]
+hoi_vec = [2 3]
+div_vec = [3 4]
+n_sim = 2
 var = 1
-data = main(div_vec, hoi_vec, n_sim, var)
+data = @time main(div_vec, hoi_vec, n_sim, var)
 #save data
 max_hoi = string(maximum(hoi_vec))
 max_div = string(maximum(div_vec))
