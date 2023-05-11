@@ -1,9 +1,9 @@
 #This script tests the prediction of expected number of equilibria for a 
 #GLV with three-way higher order interactions
 
-using Random
-using HomotopyContinuation
-using LinearAlgebra
+using Random #to sample random tensors
+using HomotopyContinuation #to solve systems of polynomials numerically
+using LinearAlgebra #to take matrix products
 using DelimitedFiles #to load and save files
 
 function randomtensor(d, n, var)
@@ -62,6 +62,36 @@ function getsystem(B, d, n)
     System(equations)
 end
 
+function rand_poly_dist(T, 
+    vars::AbstractVector, 
+    d::Integer,
+    dist::String; 
+    homogeneous::Bool = false
+)
+    """
+    Create a random dense polynomial of degree `d` in the given variables `variables`.
+    Each coefficient is sampled independently via `randn(T)`, or `rand(T)`.
+    """
+    M = monomials(vars, d; affine = !homogeneous)
+    if dist == "normal"
+        sum(randn(T, length(M)) .* M)
+    else dist == "uniform"
+        sum((rand(T, length(M)).-0.5).*M)
+    end
+end
+
+function randomsystem(d, n)
+    #declare dynamic variables
+    @var x[1:n]
+    #initialize place holder for polynomial system
+    equations = []
+    #construct system
+    for i in 1:n
+        append!(equations, rand_poly_dist(Float64, x, d, "normal"))
+    end
+    System(equations)
+end
+
 function countpositive(system)
     """
     Count number of positive solutions of polynomial system
@@ -107,11 +137,9 @@ function main(div_vec, hois_vec, n_sim, var)
     n_eq_mat
 end
 
-#hoi_vec = [2 3 4 5 6]
-#div_vec = [3 4 5]
-hoi_vec = [2 3]
-div_vec = [3 4]
-n_sim = 2
+hoi_vec = [2 3 4 5 6]
+div_vec = [3 4 5]
+n_sim = 2000
 var = 1
 data = @time main(div_vec, hoi_vec, n_sim, var)
 #save data

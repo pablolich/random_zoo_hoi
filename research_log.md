@@ -19,3 +19,12 @@ build output name outomatically
 #### May 10,2023
 
 Compare results with d = 2 to see the increase, and base research in known fact(s (1/2^n)
+Check variance also converges to the theoretical formula
+Put errorbars in simulations
+Do the same for Uniform distribution
+Write down a way go from RE to GLV for arbitrarily high order interactions
+
+#### May 11,2023
+
+Show that GLV with HOIs is a random polynomial
+Compute probability of feasibility
