@@ -27,4 +27,15 @@ Write down a way go from RE to GLV for arbitrarily high order interactions
 #### May 11,2023
 
 Show that GLV with HOIs is a random polynomial
-Compute probability of feasibility
+Compute probability of feasibility analytically (use Jensen's inequality, maybe ping Alex)
+Show in simulations the probability of feasibility
+
+#### May 12,2023
+
+heat map with probability of feasibility as a function of d and n. 
+
+#### May 15,2023
+
+code jacobian in julia to check for stability after each simulation is finished. 
+To do this, first check that polynomial way of writing this works, then work with the polynomials, by taking the derivative in Julia
+the name of the file with stability data is "dim_6_div_6_s_1000_normal"
