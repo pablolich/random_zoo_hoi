@@ -16,7 +16,7 @@ function randomtensor(d, n, var, dist)
     if dist == "normal"
         return var*randn(rng, Float64, repeat([n + 1], d)...)
     else dist == "uniform"
-        return rand(rng, Float64, repeat([n + 1], d)...)
+        return rand(rng, Float64, repeat([n + 1], d)...).-0.5
     end
 end
 
@@ -100,15 +100,17 @@ function filterpositive(res)
     return res_pos
 end
 
-function main(div_vec, hois_vec, n_sim, var, dist)
+function main(div_vec, hois_vec, n_sim, var, dist, stability=false)
     """
     Get number of positive roots for n_sim simulations
     of n species, with n running from 3 to n_max
     """
     n_hoi = length(hois_vec)
     n_div = length(div_vec)
+    #set the number of columns depending on what is to be stored
+    if stability n_col = 6 else n_col = 5 end
     #preallocate matrix to store number of zeros
-    global n_eq_mat = Array{Float64}(undef, 6)
+    n_eq_mat = zeros(Float64, 1, n_col)
     #loop over higher order dimensions
     for d in hois_vec
         print("Dimension of HOIs: ")
@@ -124,36 +126,50 @@ function main(div_vec, hois_vec, n_sim, var, dist)
                 B = randomtensor(d, n, var, dist)
                 system = getsystem(x, B, d, n)
                 #show solving progress only if slow
-                if n*d > 15 show = true else show = false end
+                if n^(d-1) > 1024 show = true else show = false end
                 #solve system and get real solutions
                 real_sols = real_solutions(solve(system, show_progress = show))
                 n_real = length(real_sols)
                 #get positive solutions
                 pos_sols = filter(s -> all(s .> 0), real_sols)
                 n_pos = length(pos_sols)
-                #get largest eigenvalue of jacobian evaluated at all positive equilibria
-                lambda_max_vec = zeros(Float64, n_pos)
-                for i in 1:n_pos
-                    j_eval_i = jacobian(system, pos_sols[i])
-                    lambda_max_vec[i] = maximum(real(eigvals(j_eval_i)))
+                if stability && n_pos > 0 
+                    #get largest eigenvalue of jacobian evaluated at all positive equilibria
+                    lambda_max_vec = zeros(Float64, n_pos)
+                    for i in 1:n_pos
+                        j_eval_i = jacobian(system, pos_sols[i])
+                        lambda_max_vec[i] = maximum(real(eigvals(j_eval_i)))
+                    end
+                    #store results
+                    add_rows = hcat(repeat([d n s n_real n_pos], n_pos), lambda_max_vec)
+                    n_eq_mat = vcat(n_eq_mat, add_rows)
+                elseif stability && n_pos == 0
+                    #store results with stability but not positive roots
+                    add_rows = hcat([d n s n_real n_pos], 1)
+                    n_eq_mat = vcat(n_eq_mat, add_rows)
+                else 
+                    #store results without stability measures
+                    add_rows = [d n s n_real n_pos]
+                    n_eq_mat = vcat(n_eq_mat, add_rows)
                 end
-                #store results
-                add_rows = hcat(repeat([d n s n_real n_pos], n_pos), lambda_max_vec)
-                global n_eq_mat = hcat(n_eq_mat, add_rows')
             end
         end
     end
-    return n_eq_mat'
+    return n_eq_mat
 end
 
+#set parameters
 hoi_vec = [2 3 4 5 6]
 div_vec = [3 4 5]
-n_sim = 1000
+n_sim = 800
 var = 1
-dist = "normal"
-data = main(div_vec, hoi_vec, n_sim, var, dist)
+dist = "uniform"
+stability = true
+#run simulations
+data = main(div_vec, hoi_vec, n_sim, var, dist, stability)
 #save data
 max_hoi = string(maximum(hoi_vec))
 max_div = string(maximum(div_vec))
-output_name = "dim_"*max_hoi*"_div_"*max_hoi*"_s_"*string(n_sim)*"_"*dist
+stab = string(stability)
+output_name = "dim_"*max_hoi*"_div_"*max_hoi*"_s_"*string(n_sim)*"_"*dist*"_stab"*stab
 writedlm("../data/expected_n_roots_"*output_name*".csv", data)

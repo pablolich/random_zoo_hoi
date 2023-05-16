@@ -15,13 +15,19 @@ names(data) = c('d', 'n', 'sim', 'n_positive')
 n_sim = 2000
   
 df = data %>% group_by(d, n) %>% 
-  count(positive, name = 'count') %>% 
-  mutate(total_eq = sum(positive*count),
+  count(n_positive, name = 'count') %>% 
+  mutate(total_eq = sum(n_positive*count),
          mean_eq = total_eq/n_sim,
-         var_eq = mean((positive-mean_eq)^2))
+         var_eq = sum(count*(n_positive - mean_eq)^2)/n_sim)
 
-  ggplot(df, aes(x = n, y = exp_eq))+
+  ggplot(df, aes(x = n, y = mean_eq))+
     geom_point(aes(color = as.factor(d)))+
+    geom_errorbar(aes(x = n, y = mean_eq, 
+                      ymin = mean_eq - sqrt(var_eq),
+                      ymax = mean_eq + sqrt(var_eq),
+                      color = as.factor(d)),
+                  size = 0.5,
+                  width = 0.2)+
     geom_function(fun = expected_eq, args = list(d = 2),
                   lty = 2)+
     geom_function(fun = expected_eq, args = list(d = 3))+
@@ -55,5 +61,37 @@ ggplot(df, aes(x = n, y = tot_positive))+
 data_stab = read.csv("../data/expected_n_roots_dim_3_div_3_s_10_normal.csv",
                      sep = "", 
                      header = F)
-       
+
+names(data_stab) = c('d', 'n', 'sim', 'real', 'positive', 'max_eig')
+
+#check results with uniform distribution
+
+data_unif = read.csv("../data/expected_n_roots_dim_6_div_6_s_1000_uniform.csv", sep = "", 
+                header = F )
+
+names(data_unif) = c('d', 'n', 'sim', 'real', 'positive')
+
+n_sim = 1000
+
+df = data_unif %>% group_by(d, n) %>% 
+  count(positive, name = 'count') %>% 
+  mutate(total_eq = sum(positive*count),
+         mean_eq = total_eq/n_sim,
+         var_eq = sum(count*(positive - mean_eq)^2)/n_sim)
+
+ggplot(df, aes(x = n, y = mean_eq))+
+  geom_point(aes(color = as.factor(d)))+
+  geom_errorbar(aes(x = n, y = mean_eq, 
+                    ymin = mean_eq - sqrt(var_eq),
+                    ymax = mean_eq + sqrt(var_eq),
+                    color = as.factor(d)),
+                size = 0.5,
+                width = 0.2)+
+  geom_function(fun = expected_eq, args = list(d = 2),
+                lty = 2)+
+  geom_function(fun = expected_eq, args = list(d = 3))+
+  geom_function(fun = expected_eq, args = list(d = 4))+
+  geom_function(fun = expected_eq, args = list(d = 5))+
+  geom_function(fun = expected_eq, args = list(d = 6))+
+  theme(aspect.ratio = 1)
              
