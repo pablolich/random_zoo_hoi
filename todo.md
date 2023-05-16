@@ -1,3 +1,4 @@
+- Fit probability of feasibiliy using an approximate distribution
 - Test if results change for symmetric tensor
 - Check that variance converges to the theoretical formula
 - Better approximation to probability of feasibility

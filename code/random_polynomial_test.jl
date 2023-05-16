@@ -102,8 +102,10 @@ end
 
 function main(div_vec, hois_vec, n_sim, var, dist, stability=false)
     """
-    Get number of positive roots for n_sim simulations
-    of n species, with n running from 3 to n_max
+    Run bulk of simulations. Each simulation computes the number of real, and feasible
+    equilibria, and their local stability, for a system of n species with interactions
+    up to order d, when interaction coefficients are iid variables centered at 0, sampled
+    from a certain distribution (so far, it can be gaussian or uniform).
     """
     n_hoi = length(hois_vec)
     n_div = length(div_vec)
@@ -163,7 +165,7 @@ hoi_vec = [2 3 4 5 6]
 div_vec = [3 4 5]
 n_sim = 800
 var = 1
-dist = "uniform"
+dist = "normal"
 stability = true
 #run simulations
 data = main(div_vec, hoi_vec, n_sim, var, dist, stability)
