@@ -39,3 +39,4 @@ heat map with probability of feasibility as a function of d and n.
 code jacobian in julia to check for stability after each simulation is finished. 
 To do this, first check that polynomial way of writing this works, then work with the polynomials, by taking the derivative in Julia
 the name of the file with stability data is "dim_6_div_6_s_1000_normal"
+find a way of, given r, A, B, ..., convert to a polynomial in julia

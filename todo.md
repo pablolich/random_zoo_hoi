@@ -1,0 +1,4 @@
+- Test if results change for symmetric tensor
+- Check that variance converges to the theoretical formula
+- Better approximation to probability of feasibility
+- Find a way to convert r, A, B, ... to a polynomial in julia
