@@ -1,8 +1,8 @@
 library("tidyverse")
 library("viridis")
 
-expected_eq = function(n, d = 3){
-  return (1/(2^(n))*(d-1)^((n)/2))
+expected_eq = function(n, d){
+  return (1/(2^(n))*(d)^(n/2))
 }
 
 #when load new data, delete first row of columns!
@@ -66,32 +66,45 @@ names(data_stab) = c('d', 'n', 'sim', 'real', 'positive', 'max_eig')
 
 #check results with uniform distribution
 
-data_unif = read.csv("../data/expected_n_roots_dim_6_div_6_s_1000_uniform.csv", sep = "", 
-                header = F )
+data_unif = read.csv("../data/expected_n_roots_dim_5_div_5_s_50_uniform_stabtrue.csv", sep = "", 
+                header = T )
+names(data_unif) = c('d', 'n', 'sim', 'real', 'positive', 'max_eig')
 
-names(data_unif) = c('d', 'n', 'sim', 'real', 'positive')
+data_unif2 = read.csv("../data/expected_n_roots_dim_5_div_5_s_50_uniform2_stabtrue.csv", sep = "", 
+                     header = T )
+names(data_unif2) = c('d', 'n', 'sim', 'real', 'positive', 'max_eig')
+data_unif2$sim = data_unif2$sim + 50
 
-n_sim = 1000
+data_merged = rbind(data_unif, data_unif2)
+n_sim = 100
 
-df = data_unif %>% group_by(d, n) %>% 
+df = data_merged %>% 
+  group_by(d, n, sim) %>% 
+  slice_min(max_eig) %>% 
+  group_by(d, n) %>% 
   count(positive, name = 'count') %>% 
-  mutate(total_eq = sum(positive*count),
-         mean_eq = total_eq/n_sim,
+  mutate(mean_eq = sum(positive*count)/n_sim,
+         var_eq = sum(count*(positive - mean_eq)^2)/n_sim)
+
+df_u = data_merged %>% 
+  group_by(d, n, sim) %>% 
+  slice_min(max_eig) %>% 
+  group_by(d, n) %>% 
+  count(positive, name = 'count') %>% 
+  mutate(mean_eq = sum(positive*count)/n_sim,
          var_eq = sum(count*(positive - mean_eq)^2)/n_sim)
 
 ggplot(df, aes(x = n, y = mean_eq))+
   geom_point(aes(color = as.factor(d)))+
-  geom_errorbar(aes(x = n, y = mean_eq, 
-                    ymin = mean_eq - sqrt(var_eq),
-                    ymax = mean_eq + sqrt(var_eq),
-                    color = as.factor(d)),
-                size = 0.5,
-                width = 0.2)+
-  geom_function(fun = expected_eq, args = list(d = 2),
-                lty = 2)+
-  geom_function(fun = expected_eq, args = list(d = 3))+
-  geom_function(fun = expected_eq, args = list(d = 4))+
-  geom_function(fun = expected_eq, args = list(d = 5))+
-  geom_function(fun = expected_eq, args = list(d = 6))+
-  theme(aspect.ratio = 1)
+  geom_point(aes(x = n, y = expected_eq(n, d)),
+             shape=3)+
+  theme(aspect.ratio = 1)+
+  labs(title = 'Gaussian')
+
+ggplot(df_u, aes(x = n, y = mean_eq))+
+  geom_point(aes(color = as.factor(d)))+
+  geom_point(aes(x = n, y = expected_eq(n, d)),
+             shape=3)+
+  theme(aspect.ratio = 1)+
+  labs(title = 'Uniform')
              
