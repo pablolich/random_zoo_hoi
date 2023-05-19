@@ -37,6 +37,7 @@ par(mfcol = c(1,2))
 plot(results$observed, results$expected, main = "# equil"); abline(c(0,1))
 plot(results$pfeas, results$exppfeas, main = "p feas"); abline(c(0,1))
 points(results$pfeas, results$exppois, col = "blue")
+points(results$pfeas, results$expbinom, col = "green")
 
 # dt <- read_csv("n_3_d_5.csv")
 # mu <- mean(dt$nsol)

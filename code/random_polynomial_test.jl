@@ -115,7 +115,7 @@ hoi_vec = [1 2 3 4 5] #polynomial degrees
 div_vec = [2 3 4 5] #number of species
 n_sim = 1000 #number of simulations
 var = 1
-dist = "uniform"
+dist = "normal"
 stability = true
 #run simulations
 data = main(div_vec, hoi_vec, n_sim, var, dist, stability)

@@ -1,3 +1,7 @@
+- RECAP OF TODAYS MEETING
+- Plot histograms and distributions
+- Fix sampling of random polynomials such that the variance scales with the degree and the number of things (multinomial theorem)
+- Explain the 1/2^n
 - Test if results change for symmetric tensor
 - Check that variance converges to the theoretical formula
 - Find a way to convert r, A, B, ... to a polynomial in julia
