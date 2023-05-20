@@ -66,19 +66,17 @@ names(data_stab) = c('d', 'n', 'sim', 'real', 'positive', 'max_eig')
 
 #check results with uniform distribution
 
-data_unif = read.csv("../data/expected_n_roots_dim_5_div_5_s_50_uniform_stabtrue.csv", sep = "", 
+data_unif = read.csv("../data/expected_n_roots_dim_5_div_5_s_1000_uniform_stabtrue.csv", sep = "", 
                 header = T )
+
+data_normal = read.csv("../data/expected_n_roots_dim_5_div_5_s_1000_normal_stabtrue.csv", sep = "", 
+                       header = T)
 names(data_unif) = c('d', 'n', 'sim', 'real', 'positive', 'max_eig')
+names(data_normal) = c('d', 'n', 'sim', 'real', 'positive', 'max_eig')
 
-data_unif2 = read.csv("../data/expected_n_roots_dim_5_div_5_s_50_uniform2_stabtrue.csv", sep = "", 
-                     header = T )
-names(data_unif2) = c('d', 'n', 'sim', 'real', 'positive', 'max_eig')
-data_unif2$sim = data_unif2$sim + 50
+n_sim = 1000
 
-data_merged = rbind(data_unif, data_unif2)
-n_sim = 100
-
-df = data_merged %>% 
+df = data_normal %>% 
   group_by(d, n, sim) %>% 
   slice_min(max_eig) %>% 
   group_by(d, n) %>% 
@@ -86,7 +84,7 @@ df = data_merged %>%
   mutate(mean_eq = sum(positive*count)/n_sim,
          var_eq = sum(count*(positive - mean_eq)^2)/n_sim)
 
-df_u = data_merged %>% 
+df_u = data_unif %>% 
   group_by(d, n, sim) %>% 
   slice_min(max_eig) %>% 
   group_by(d, n) %>% 
@@ -107,4 +105,3 @@ ggplot(df_u, aes(x = n, y = mean_eq))+
              shape=3)+
   theme(aspect.ratio = 1)+
   labs(title = 'Uniform')
-             

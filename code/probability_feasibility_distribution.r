@@ -45,9 +45,26 @@ fun = function(p, n, d, k){
   return(E - sqrt(d)^n)
 }
 
-# for (i in seq(0.000001, 0.99999, length.out = 100)){
-#   print(fun(i, 3, 3, seq(0, 3^3)))
-# }
+f_x = function(n, i){
+  return((1-1/2^n)^i)
+}
+
+f2_x = function(n, i){
+  return(i*(i-1)*(1-1/2^n)^(i-2))
+}
+expected_value_expansion = function(n, d, var){
+  mean_x = sqrt(d^n)
+  #evaluate function at mean
+  f_mean = f_x(n, mean_x)
+  f2_mean = f2_x(n, mean_x)
+  approx = f_mean + 1/2*f2_mean*var
+  return(approx)
+} 
+
+var_curve = function(v_inf, n, d){
+  return(v_inf*d^(n/2)/4^n)
+}
+
 
 #load stefanos data
 results <- tibble()
@@ -58,9 +75,18 @@ for (n in c(3,4,5)){
     f1 <-  paste0("n_", n, "_d_", d, ".csv")
     if (file.exists(f1)){
       dt <- read_csv(f1, col_types = cols())
+      
+      #get rid of things below one, since they are numerical errors
       n <- dt$n[1]
       d <- dt$d[1]
+      #calculate experimental variance of the simulations
       obs <- mean(dt$npos)
+      obs_real = mean(dt$nsol)
+      #rescale by mean
+      dt$npos = dt$npos/obs_real
+      var_pos_t = mean((dt$npos)^2) - (mean(dt$npos))^2
+      var_pos = sd(dt$npos)^2
+      var_real = mean((dt$nsol)^2) - (mean(dt$nsol))^2
       expected <- 1/(2^n) * (d-1)^(n / 2)
       exppfeas <- 1 - (1 - 1/(2^n))^((d-1)^(n / 2))
       exppois <- 1- exp(-((-1 + d)^(n/2)/2^n))
@@ -77,33 +103,41 @@ for (n in c(3,4,5)){
       }
       probs = even_odd_binomial_2((d-1)^n, p)
       expbinom_even_odd = 1 - sum(probs*(1-1/(2^n))^(k_vec))
-      #vector with possible number of solutions
-      n_sols = seq(0, (d-1)^n)
+      #calculate by taylor expanding the expected value
+      exptaylor = 1 - expected_value_expansion(n, d-1, var_real)
+      var_pred = var_curve(1.179709, n, d-1) 
+      v_inf = 4*var_pos/sqrt(d-1)
       pfeas <- mean(dt$npos > 0)
       results <- rbind(results, tibble(
         n = n, 
         d = d, 
-        observed = obs,
+        obs_mean_pos = obs,
+        obs_mean_real = obs_real,
+        obs_variance_pos_t = var_pos_t,
+        obs_variance_pos = var_pos,
+        obs_variance_real = var_real,
         expected = expected,
         pfeas = pfeas,
         exppfeas = exppfeas,
         exppois = exppois,
         expbinom = expbinom,
-        expbinom_even = expbinom_even_odd
+        expbinom_even = expbinom_even_odd,
+        exptaylor = exptaylor,
+        var_pred = var_pred,
+        v_inf = v_inf
       ))
     }
   }
 }
 
-results
-
-print(results)
 par(mfcol = c(1,2))
-plot(results$observed, results$expected, main = "# equil"); abline(c(0,1))
+plot(results$obs_mean_pos, results$expected, main = "# equil"); abline(c(0,1))
 plot(results$pfeas, results$exppfeas, main = "p feas", pch = 20); abline(c(0,1))
-points(results$pfeas, results$exppois, col = "blue", pch = 8)
-points(results$pfeas, results$expbinom, col = "green", pch = 0)
 points(results$pfeas, results$expbinom_even, col = "red", pch = 20)
-legend(.01, .8, legend=c("Jensen", "Poisson", "Binomial", "Binomial (even or odd)"),
-       col=c("black", "blue", "green", "red"), pch = c(1, 8, 0, 20), 
-       cex = 0.5)
+points(results$pfeas, results$exppois, col = "blue", pch = 4)
+points(results$pfeas, results$expbinom, col = "green", pch = 0)
+points(results$pfeas, results$exptaylor, col = "purple", pch = 3)
+legend(.01, .8, legend=c("Jensen", "Poisson", "Binomial", "Binomial (even or odd)",
+                         "Taylor"),
+       col=c("black", "blue", "green", "red", "purple"), pch = c(20, 4, 0, 20, 3), 
+       cex = 0.8)

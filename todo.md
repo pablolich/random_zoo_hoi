@@ -1,6 +1,5 @@
-- RECAP OF TODAYS MEETING
-- Plot histograms and distributions
 - Fix sampling of random polynomials such that the variance scales with the degree and the number of things (multinomial theorem)
+- What was the other way of getting the even_odd binomial?
 - Explain the 1/2^n
 - Test if results change for symmetric tensor
 - Check that variance converges to the theoretical formula

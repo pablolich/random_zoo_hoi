@@ -6,6 +6,15 @@ using HomotopyContinuation #to solve systems of polynomials numerically
 using LinearAlgebra #to take matrix products
 using DelimitedFiles #to load and save files
 
+function multinomialcoeff(n, kvec)
+    """
+    Compute multinomial coefficient
+    """
+    num = factorial(big(n))
+    den = prod([factorial(big(i)) for i in kvec])
+    return num/den
+end
+
 function rand_poly_dist(T, 
     vars::AbstractVector, 
     d::Integer,
@@ -14,11 +23,24 @@ function rand_poly_dist(T,
 )
     """
     Create a random dense polynomial of degree `d` in the given variables `variables`.
-    Each coefficient is sampled independently from a Normal(0, 1) or a Uniform(-0.5,0.5).
+    Each coefficient is sampled independently from a Normal(0, var) or a Uniform(-0.5,0.5).
     """
     M = monomials(vars, d; affine = !homogeneous)
+    n_terms = length(M)
+    coefficient_list = zeros(Float64, n_terms)
     if dist == "normal"
-        sum(randn(T, length(M)) .* M)
+        for i in 1:n_terms
+            monomial_i = M[i]
+            #get degree of ith coefficient
+            degree_i = degree(monomial_i)
+            #get exponents of each variable in monomial
+            exponents, coeffs = exponents_coefficients(monomial_i, vars)
+            #compute the variance of ith coefficient using mulitinomial coefficient
+            variance = multinomialcoeff(d, exponents)
+            #sample ith coefficient from a gaussian with computed variance
+            coefficient_list[i] = variance*randn(T)
+        end
+        sum(coefficient_list .* M)
     else dist == "uniform"
         sum((rand(T, length(M)).-0.5).*M)
     end
@@ -111,9 +133,9 @@ function main(div_vec, hois_vec, n_sim, var, dist, stability=false)
 end
 
 #set parameters
-hoi_vec = [1 2 3 4 5] #polynomial degrees
-div_vec = [2 3 4 5] #number of species
-n_sim = 1000 #number of simulations
+hoi_vec = [5 10 15 20 25] #polynomial degrees
+div_vec = [1] #number of species
+n_sim = 10000 #number of simulations
 var = 1
 dist = "normal"
 stability = true
@@ -123,5 +145,5 @@ data = main(div_vec, hoi_vec, n_sim, var, dist, stability)
 max_hoi = string(maximum(hoi_vec))
 max_div = string(maximum(div_vec))
 stab = string(stability)
-output_name = "dim_"*max_hoi*"_div_"*max_hoi*"_s_"*string(n_sim)*"_"*dist*"_stab"*stab
+output_name = "dim_"*max_hoi*"_div_"*max_div*"_s_"*string(n_sim)*"_"*dist*"_stab"*stab
 writedlm("../data/expected_n_roots_"*output_name*".csv", data)
