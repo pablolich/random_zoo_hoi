@@ -1,6 +1,8 @@
 library("tidyverse")
 library("utils")
 
+setwd("/Users/pablolechon/Desktop/phd/random_zoo_hoi/code/Rcode") #mac
+
 even_odd_binomial = function(n, p, k){
   if (n %% 2 == 0){
     #even distributiv = on
@@ -50,11 +52,11 @@ f_x = function(n, i){
 }
 
 f2_x = function(n, i){
-  return(i*(i-1)*(1-1/2^n)^(i-2))
+  return(log(1-1/2^n)^2*(1-1/2^n)^(i))
 }
 expected_value_expansion = function(n, d, var){
   mean_x = sqrt(d^n)
-  #evaluate function at mean
+  #evaluate function and second derivative at mean
   f_mean = f_x(n, mean_x)
   f2_mean = f2_x(n, mean_x)
   approx = f_mean + 1/2*f2_mean*var
