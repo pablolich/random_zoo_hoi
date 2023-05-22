@@ -7,14 +7,15 @@ expected_eq = function(n, d){
 
 #when load new data, delete first row of columns!
 
-data = read.csv("../data/expected_n_rootsdim_6_div_6_s_2000.csv", sep = "", 
+  data = read.csv("../data/expected_n_roots_dim_5_div_5_s_1000_normal_stabtrue.csv", sep = "", 
                  header = F )
 
 names(data) = c('d', 'n', 'sim', 'n_positive')
 
-n_sim = 2000
+n_sim = 1000
   
 df = data %>% group_by(d, n) %>% 
+  slice_min(max_eig) %>% 
   count(n_positive, name = 'count') %>% 
   mutate(total_eq = sum(n_positive*count),
          mean_eq = total_eq/n_sim,

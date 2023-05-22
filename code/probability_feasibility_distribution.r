@@ -64,7 +64,7 @@ expected_value_expansion = function(n, d, var){
 } 
 
 var_curve = function(v_inf, n, d){
-  return(v_inf*d^(n/2)/4^n)
+  return(v_inf*d^(n/2))
 }
 
 
@@ -107,8 +107,8 @@ for (n in c(3,4,5)){
       expbinom_even_odd = 1 - sum(probs*(1-1/(2^n))^(k_vec))
       #calculate by taylor expanding the expected value
       exptaylor = 1 - expected_value_expansion(n, d-1, var_real)
-      var_pred = var_curve(1.179709, n, d-1) 
-      v_inf = 4*var_pos/sqrt(d-1)
+      var_pred = var_curve(0.2949272, n, d-1) #hard code Vinf
+      v_inf = var_pos/sqrt(d-1)^n
       pfeas <- mean(dt$npos > 0)
       results <- rbind(results, tibble(
         n = n, 

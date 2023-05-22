@@ -12,7 +12,7 @@ function multinomialcoeff(n, kvec)
     """
     num = factorial(big(n))
     den = prod([factorial(big(i)) for i in kvec])
-    return num/den
+    return num/(den*factorial(n - sum(kvec)))
 end
 
 function rand_poly_dist(T, 
@@ -31,9 +31,7 @@ function rand_poly_dist(T,
     if dist == "normal"
         for i in 1:n_terms
             monomial_i = M[i]
-            #get degree of ith coefficient
-            degree_i = degree(monomial_i)
-            #get exponents of each variable in monomial
+            #get exponents of each variable in monomial i
             exponents, coeffs = exponents_coefficients(monomial_i, vars)
             #compute the variance of ith coefficient using mulitinomial coefficient
             variance = multinomialcoeff(d, exponents)
@@ -133,9 +131,9 @@ function main(div_vec, hois_vec, n_sim, var, dist, stability=false)
 end
 
 #set parameters
-hoi_vec = [5 10 15 20 25] #polynomial degrees
-div_vec = [1] #number of species
-n_sim = 10000 #number of simulations
+hoi_vec = [1 2 3 4 5] #polynomial degrees
+div_vec = [2 3 4 5] #number of species
+n_sim = 1000 #number of simulations
 var = 1
 dist = "normal"
 stability = true

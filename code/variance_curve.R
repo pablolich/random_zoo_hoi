@@ -6,15 +6,26 @@ names(data) = c('d', 'n', 'sim', 'real', 'positive', 'max_eig')
 
 df = data %>% group_by(d, n, sim) %>% slice_min(max_eig) 
 
-df_var = df %>% group_by(d, n) %>% summarise(var = sd(positive)^2) %>% 
-  mutate(v_inf = 4*var/sqrt(d)) %>% 
+df_var = df %>% group_by(d, n) %>% summarise(var = sd(positive)^2,
+                                             var_t = mean(positive^2)-(mean(positive))^2) %>% 
+  mutate(v_inf = var/sqrt(d)) %>% 
   ungroup() %>% 
   mutate(v_inf_av = mean(v_inf))
 
 ggplot(df_var)+ 
   geom_point(aes(x = d, y = var))+
   geom_point(aes(x = d, y = v_inf),
-             color = 'blue')
+             color = 'blue',
+             shape = '+',
+             size = 5)
+
+ggplot(results)+ 
+  geom_point(aes(x = d-1, y = obs_variance_pos_t,
+                 color = as.factor(n)))+
+  geom_point(aes(x = d-1, y = v_inf),
+             color = 'blue',
+             shape = '+',
+             size = 5)
 
 #plot the variance of my simulations and compare with the predicted variance
 
