@@ -6,13 +6,70 @@ using HomotopyContinuation #to solve systems of polynomials numerically
 using LinearAlgebra #to take matrix products
 using DelimitedFiles #to load and save files
 
+function randomtensor(d, n, variance, dist)
+    """
+    Sample entries from a tensor with dimmesions stored
+    in dims from a gaussian distribution with mean 0 and sd 1
+    """
+    #sample tensor of size (n+1) of d dimensions
+    rng = MersenneTwister()
+    if dist == "normal"
+        return variance*randn(rng, Float64, repeat([n + 1], d)...)
+    else dist == "uniform"
+        return rand(rng, Float64, repeat([n + 1], d)...).-0.5
+    end
+end
+
+function equation_i(T_i, vec)
+    """
+    Build GLV equation for species i with hois of dimension d  
+    """
+    #get dimension of T
+    dim = ndims(T_i)
+    n = size(T_i,1)
+    #initialize total
+    tot = 0
+    if dim > 2
+        #hois are more than three-way, build polynomial recursively
+        for j in 1:n
+            slices = repeat([Colon()], dim-1)
+            tot += vec[j]*equation_i(T_i[slices...,j], vec)
+        end
+    elseif dim == 2
+        #hois are three-way, compute quadratic form
+        return dot(vec, T_i*vec)
+    else
+        #no hois, compute linear form
+        return T_i'*vec
+    end
+    return tot
+end
+
+function getsystem(vars, B, d, n)
+    """
+    Build system of polynomials
+    """
+    #add a constant species
+    vars = [vars; 1]
+    #initialize system of ODEs as empty list
+    equations = []
+    #construct set of dynamic equations
+    for i in 1:n
+        #get tensor of interactions for species i
+        B_i = B[repeat([Colon()],d-1)...,i]
+        eqn = equation_i(B_i, vars)
+        append!(equations, eqn)
+    end
+    System(equations)
+end
+
 function multinomialcoeff(n, kvec)
     """
     Compute multinomial coefficient
     """
     num = factorial(big(n))
     den = prod([factorial(big(i)) for i in kvec])
-    return num/(den*factorial(n - sum(kvec)))
+    return num/den
 end
 
 function rand_poly_dist(T, 
@@ -33,8 +90,9 @@ function rand_poly_dist(T,
             monomial_i = M[i]
             #get exponents of each variable in monomial i
             exponents, coeffs = exponents_coefficients(monomial_i, vars)
+            monomial_degree = degree(monomial_i)
             #compute the variance of ith coefficient using mulitinomial coefficient
-            variance = multinomialcoeff(d, exponents)
+            variance = multinomialcoeff(monomial_degree, exponents)
             #sample ith coefficient from a gaussian with computed variance
             coefficient_list[i] = variance*randn(T)
         end
@@ -57,34 +115,51 @@ function randomsystem(vars, d, n, dist)
     System(equations)
 end
 
-function matrix2poly(r, A...)
+function one_simulation(d, n, s, x, variance, dist)
     """
-    Map matrices to polynomials
+    Computes the number of real, and feasible equilibria, and (if asked) their local stability, 
+    for a system of n species with interactions up to order d, 
+    when interaction coefficients are iid variables centered at 0, sampled
+    from a certain distribution (so far, it can be gaussian or uniform).
     """
-    #construct vector of variables
-    n = length(r)
-    @var x[1:n]
-    #construct equation of species i
-    for i in 1:n
-        #get tensor of interactions for species i
-        B_i = B[repeat([Colon()],d-1)...,i]
+    #syst = randomsystem(x, d, n, dist)
+    B = randomtensor(d, n, variance, dist)
+    syst = getsystem(x, B, d, n)
+    #show solving progress only if slow
+    if n^(d-1) > 1024 show = true else show = false end
+    #solve system and get real solutions
+    real_sols = real_solutions(solve(syst, show_progress = show))
+    nsol = length(real_sols)
+    #get positive solutions
+    pos_sols = filter(s -> all(s .> 0), real_sols)
+    npos = length(pos_sols)
+    if stability && npos > 0 
+        #get largest eigenvalues of jacobian evaluated at all feasible equilibria
+        lambda_max_vec = zeros(Float64, npos)
+        for i in 1:npos
+            j_eval_i = jacobian(syst, pos_sols[i])
+            lambda_max_vec[i] = maximum(real(eigvals(j_eval_i)))
+        end
+        add_rows = hcat(repeat([d n s nsol npos], npos), lambda_max_vec)
+    elseif stability && npos == 0
+        #store a 1 flag for eigenvalue in the absence of feasible equilibria
+        add_rows = hcat([n d nsol npos], 1)
+    else 
+        #store results without stability measures
+        add_rows = [n d nsol npos]
     end
+    return add_rows
 end
 
-function main(div_vec, hois_vec, n_sim, var, dist, stability=false)
+function main(div_vec, hois_vec, n_sim, variance, dist, stability)
     """
-    Run bulk of simulations. Each simulation computes the number of real, and feasible
-    equilibria, and their local stability, for a system of n species with interactions
-    up to order d, when interaction coefficients are iid variables centered at 0, sampled
-    from a certain distribution (so far, it can be gaussian or uniform).
+    Run bulk of simulations
     """
     n_hoi = length(hois_vec)
     n_div = length(div_vec)
     #set the number of columns depending on what is to be stored
-    if stability n_col = 6 else n_col = 5 end
-    #preallocate matrix to store number of zeros
-    n_eq_mat = zeros(Float64, 1, n_col)
-    #loop over higher order dimensions
+    if stability n_col = 5 else n_col = 4 end
+    #loop over order of interactions
     for d in hois_vec
         print("Dimension of HOIs: ")
         println(d)
@@ -94,54 +169,31 @@ function main(div_vec, hois_vec, n_sim, var, dist, stability=false)
             println(n)
             #declare dynamic variables
             @var x[1:n]
-            #solve n_sim realizations of communities with i spp
+            #preallocate matrix to store results
+            n_eq_mat = zeros(Float64, 1, n_col)
+            #loop over simulations for each n
             for s in 1:n_sim
-                system = randomsystem(x, d, n, dist)
-                #show solving progress only if slow
-                if n^d > 1024 show = true else show = false end
-                #solve system and get real solutions
-                real_sols = real_solutions(solve(system, show_progress = show))
-                n_real = length(real_sols)
-                #get positive solutions
-                pos_sols = filter(s -> all(s .> 0), real_sols)
-                n_pos = length(pos_sols)
-                if stability && n_pos > 0 
-                    #get largest eigenvalues of jacobian evaluated at all feasible equilibria
-                    lambda_max_vec = zeros(Float64, n_pos)
-                    for i in 1:n_pos
-                        j_eval_i = jacobian(system, pos_sols[i])
-                        lambda_max_vec[i] = maximum(real(eigvals(j_eval_i)))
-                    end
-                    #store results
-                    add_rows = hcat(repeat([d n s n_real n_pos], n_pos), lambda_max_vec)
-                    n_eq_mat = vcat(n_eq_mat, add_rows)
-                elseif stability && n_pos == 0
-                    #store a 1 flag for eigenvalue in the absence of feasible equilibria
-                    add_rows = hcat([d n s n_real n_pos], 1)
-                    n_eq_mat = vcat(n_eq_mat, add_rows)
-                else 
-                    #store results without stability measures
-                    add_rows = [d n s n_real n_pos]
-                    n_eq_mat = vcat(n_eq_mat, add_rows)
-                end
+                add_rows = one_simulation(d, n, s, x, variance, dist)
+                n_eq_mat = vcat(n_eq_mat, add_rows)
             end
+            #after all simulations have ended, save
+            writedlm("Rcode/n_"*string(n)*"_d_"*string(d)*".csv", n_eq_mat)
         end
     end
-    return n_eq_mat
 end
 
 #set parameters
-hoi_vec = [1 2 3 4 5] #polynomial degrees
-div_vec = [2 3 4 5] #number of species
-n_sim = 1000 #number of simulations
+deg_vec = [1 2 3 4] #polynomial degrees
+div_vec = [6] #number of species
+n_sim = 5000 #number of simulations
 var = 1
 dist = "normal"
-stability = true
+stability = false
 #run simulations
-data = main(div_vec, hoi_vec, n_sim, var, dist, stability)
+data = main(div_vec, deg_vec.+1, n_sim, var, dist, stability)
 #save data
-max_hoi = string(maximum(hoi_vec))
-max_div = string(maximum(div_vec))
-stab = string(stability)
-output_name = "dim_"*max_hoi*"_div_"*max_div*"_s_"*string(n_sim)*"_"*dist*"_stab"*stab
-writedlm("../data/expected_n_roots_"*output_name*".csv", data)
+#max_deg = string(maximum(deg_vec))
+#max_div = string(maximum(div_vec))
+#stab = string(stability)
+#output_name = "deg_"*max_deg*"_div_"*max_div*"_s_"*string(n_sim)*"_"*dist*"_stab"*stab
+#writedlm("../data/expected_n_roots_"*output_name*".csv", data)

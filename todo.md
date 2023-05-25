@@ -1,7 +1,7 @@
-- See if Taylor expansion approximation is accurate for more simulations. Take the smallest system for which it fails, and do more simulations
+- Test that solutions zero diferential equation
+- Implement infinitely growing files
+- Calculate variance of the coefficients of GLV based on experiments
 - Calculate inflexion point for which pfeas starts increasing with n
 - Explain the 1/2^n that seems to be obvious to mathematicians
-- Test if results change for symmetric tensor
 - Check that variance converges to the theoretical formula
 - Find a way to convert r, A, B, ... to a polynomial in julia
-- Find a way to compute multinomial coefficient efficiently in Julia

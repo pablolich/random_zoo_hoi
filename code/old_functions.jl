@@ -1,57 +1,52 @@
 
-function randomtensor(d, n, var, dist)
+function multinomialcoeff(n, kvec)
     """
-    Sample entries from a tensor with dimmesions stored
-    in dims from a gaussian distribution with mean 0 and sd 1
+    Compute multinomial coefficient
     """
-    #sample tensor of size (n+1) of d dimensions
-    rng = MersenneTwister()
+    num = factorial(big(n))
+    den = prod([factorial(big(i)) for i in kvec])
+    return num/den
+end
+
+function rand_poly_dist(T, 
+    vars::AbstractVector, 
+    d::Integer,
+    dist::String; 
+    homogeneous::Bool = false
+)
+    """
+    Create a random dense polynomial of degree `d` in the given variables `variables`.
+    Each coefficient is sampled independently from a Normal(0, var) or a Uniform(-0.5,0.5).
+    """
+    M = monomials(vars, d; affine = !homogeneous)
+    n_terms = length(M)
+    coefficient_list = zeros(Float64, n_terms)
     if dist == "normal"
-        return var*randn(rng, Float64, repeat([n + 1], d)...)
-    else dist == "uniform"
-        return rand(rng, Float64, repeat([n + 1], d)...).-0.5
-    end
-end
-
-function equation_i(T_i, vec)
-    """
-    Build GLV equation for species i with hois of dimension d  
-    """
-    #get dimension of T
-    dim = ndims(T_i)
-    n = size(T_i,1)
-    #initialize total
-    tot = 0
-    if dim > 2
-        #hois are more than three-way, build polynomial recursively
-        for j in 1:n
-            slices = repeat([Colon()], dim-1)
-            tot += vec[j]*equation_i(T_i[slices...,j], vec)
+        for i in 1:n_terms
+            monomial_i = M[i]
+            #get exponents of each variable in monomial i
+            exponents, coeffs = exponents_coefficients(monomial_i, vars)
+            monomial_degree = degree(monomial_i)
+            #compute the variance of ith coefficient using mulitinomial coefficient
+            variance = multinomialcoeff(monomial_degree, exponents)
+            #sample ith coefficient from a gaussian with computed variance
+            coefficient_list[i] = variance*randn(T)
         end
-    elseif dim == 2
-        #hois are three-way, compute quadratic form
-        return dot(vec, T_i*vec)
-    else
-        #no hois, compute linear form
-        return T_i'*vec
+        sum(coefficient_list .* M)
+    else dist == "uniform"
+        sum((rand(T, length(M)).-0.5).*M)
     end
-    return tot
 end
 
-function getsystem(vars, B, d, n)
+function randomsystem(vars, d, n, dist)
     """
-    Build system of polynomials
+    Build system of random polynomials
     """
-    #add a constant species
-    vars = [vars; 1]
-    #initialize system of ODEs as empty list
+    #initialize place holder for polynomial system
     equations = []
-    #construct set of dynamic equations
+    #construct system
     for i in 1:n
-        #get tensor of interactions for species i
-        B_i = B[repeat([Colon()],d-1)...,i]
-        eqn = equation_i(B_i, vars)
-        append!(equations, eqn)
+        append!(equations, rand_poly_dist(Float64, vars, d, dist))
     end
     System(equations)
 end
