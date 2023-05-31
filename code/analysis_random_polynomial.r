@@ -46,8 +46,20 @@ df = data %>%
   mutate(total_eq = sum(positive*count),
          mean_eq = total_eq/n_sim,
          var_eq = sum(count*(positive - mean_eq)^2)/n_sim,
-         pfeas = 1 - expected_value_expansion(n, d, NA, NA, 1)) %>% 
-  arrange(d, n)
+         pfeas_exp = total_eq/n_sim,
+         pfeas_theo = 1 - expected_value_expansion(n, d-1, NA, NA, 1)) %>% 
+  select(c(n, pfeas_exp, d)) %>% 
+  group_by(d, n) %>% 
+  summarise(pfeas = mean(pfeas_exp)) %>% 
+  relocate(n, .before = d) %>%
+  relocate(pfeas, .before = d)
+  
+write.table(df, '../data/pfeas.dat', sep = " ", row.names = F)
+  
+ggplot(df, aes(x = n, y = pfeas_exp))+
+  geom_point(aes(color = as.factor(d)))+
+  geom_point(aes(x = n, y = pfeas_theo),
+             shape = 3)
 
   ggplot(df, aes(x = n, y = mean_eq))+
     geom_point(aes(color = as.factor(d)))+

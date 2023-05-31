@@ -29,7 +29,7 @@ expected_value_expansion = function(n, d, var, skw, order){
 } 
 
 results <- tibble()
-for (n in c(1,2,3,4,5,6,7)){
+for (n in c(0,1,2,3,4,5,6,7,8)){
   for (d in c(2,3,4,5,6)){
     #for (d in c(3,5)){
     f1 <-  paste0("n_", n, "_d_", d, ".csv")
@@ -61,6 +61,8 @@ for (n in c(1,2,3,4,5,6,7)){
       results <- rbind(results, tibble(
         n = n, 
         d = d, 
+        nsol_av = mean(dt$nsol),
+        npos_av = mean(dt$npos),
         pfeas = pfeas,
         pfeas_exp1 = exptaylor1,
         pfeas_exp2 = exptaylor2,
@@ -75,7 +77,8 @@ dat1 = results %>% select(c(pfeas, pfeas_exp1, d))
 dat2 = results %>% select(c(pfeas, pfeas_exp2, d))
 dat3 = results %>% select(c(pfeas, pfeas_exp3, d))
 dat4 = results %>% select(c(pfeas_exp2, n, d))
-dat5 = results %>% select(c(n, d))
+dat5 = results %>% mutate(dd = d-1) %>% select(c(n, nsol_av, dd)) %>% rename(d = dd)
+dat6 = results %>% mutate(dd = d-1) %>% select(c(n, npos_av, dd)) %>% rename(d = dd)
 
 #save data
 write.table(dat0, '../../data/pfeas_sims.dat', sep = " ", row.names = F,
@@ -87,4 +90,8 @@ write.table(dat2, '../../data/pfeas_approx2.dat', sep = " ", row.names = F,
 write.table(dat3, '../../data/pfeas_approx3.dat', sep = " ", row.names = F,
             quote=F)
 write.table(dat4, '../../data/pfeas_approx2_n.dat', sep = " ", row.names = F,
+            quote=F)
+write.table(dat5, '../../data/exp_eq.dat', sep = " ", row.names = F,
+            quote=F)
+write.table(dat6, '../../data/exp_eq_pos.dat', sep = " ", row.names = F,
             quote=F)

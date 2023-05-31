@@ -4,10 +4,8 @@ using HomotopyContinuation #to solve systems of polynomials numerically
 using LinearAlgebra #to take matrix products
 using DelimitedFiles #to load and save files
 
-function sumterm(C, kappa, mu, nres, i, solution)
-    #number of resources
-    
-    #useful vectors
+function sumterm(C, kappa, mu, nres, i, solution)    
+    #useful vector
     Cx = C*solution
     terms = []
     for j in 1:nres
@@ -19,7 +17,6 @@ end
 
 function testsolution(solution, C, kappa, mu, d)
     nres, nspp = size(C)
-    
     dxstardt = []
     for i in 1:nspp
         term1_i = sumterm(C, kappa, mu, nres, i, solution)
@@ -37,6 +34,14 @@ function generatepars(distribution, nspp, nres)
     return C, mu, kappa, death
 end
 
+function test_pars(nspp, nres)
+    C = ones(nres, nspp)
+    mu = 0.5*ones(nres, 1)
+    kappa = 4*ones(nres, 1)
+    death = 2*ones(nspp, 1)
+    return C, mu, kappa, death
+end
+
 function product1out(nres, j, factors)
     #indices to keep
     keep = deleteat!(collect(1:nres), j)
@@ -46,9 +51,9 @@ function product1out(nres, j, factors)
 end
 
 function sum_terms_j(nres, factors, C_mat, kappa_vec, i)
-    sum_j_terms = zeros(Float64, nres)
+    sum_j_terms = []
     for j in 1:nres
-        sum_j_terms[j] = product1out(nres, j, factors)*C_mat[j,i]*kappa_vec[j]
+        append!(sum_j_terms, product1out(nres, j, factors)*C_mat[j,i]*kappa_vec[j])
     end
     return sum(sum_j_terms)
 end
@@ -94,22 +99,23 @@ function main(iterator, nsim)
         println("Resources ", m)
         for s in 1:nsim
             #sample parameters
-            C, mu, kappa, d = generatepars(LogNormal(), n, m)
+            #C, mu, kappa, d = generatepars(LogNormal(), n, m)
+            C, mu, kappa, d = test_pars(n, m)
             syst = buildsystem(C, mu, kappa, d, x)
             #solve system and get real solutions
             real_sols = real_solutions(solve(syst))
             #test solution
             nsol = length(real_sols)
-            #test solutions
-            if nsol > 0
-                for i in 1:nsol
-                    test = testsolution(real_sols[i], C, kappa, mu, d)
-                    println(test)
-                end
-            end
             #get positive solutions
             pos_sols = filter(s -> all(s .> 0), real_sols)
             npos = length(pos_sols)
+            #test solutions
+            if npos > 0
+                for i in 1:npos
+                    test = testsolution(pos_sols[i], C, kappa, mu, d)
+                    println(test)
+                end
+            end
             #store results
             add_rows = [n m nsol npos]
             n_eq_mat = vcat(n_eq_mat, add_rows)
@@ -118,11 +124,11 @@ function main(iterator, nsim)
     return n_eq_mat
 end
 
-nspp_max = 4
-nres_max = 4
+nspp_max = 3
+nres_max = 3
 #set parameters for simulations
 spp_res_pairs = [(x, y) for x in 1:nspp_max for y in 1:nres_max if y >= x]
-nsim = 1000
+nsim = 100
 #run simulations
 data = main(spp_res_pairs, nsim)
 #save results

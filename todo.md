@@ -1,5 +1,11 @@
-- Test that solutions zero diferential equation
-- Implement infinitely growing files
+- Can we run julia in the cluster?  
+- Implement parity restricted minimzation routine
+- Implement infinitely growing files (if the problem is not enough simulations)
+- Why do I not get the more feasibility as increasing number of resources type of behaviour?
+- Beyond standard gaussianity
+- Comment latex code
+- Look at polynomials associated with symmetric tensors
+- What is faster, KSS or RE?
 - Calculate variance of the coefficients of GLV based on experiments
 - Calculate inflexion point for which pfeas starts increasing with n
 - Explain the 1/2^n that seems to be obvious to mathematicians

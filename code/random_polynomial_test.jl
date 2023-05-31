@@ -6,7 +6,11 @@ using HomotopyContinuation #to solve systems of polynomials numerically
 using LinearAlgebra #to take matrix products
 using DelimitedFiles #to load and save files
 
-function randomtensor(d, n, variance, dist)
+function get_n_ds(max_n, max_d, comp_limit)
+    return [(x, y) for x in 1:8, y in 1:6 if y^x<5000]
+end
+
+function randomtensor(d, n, dist)
     """
     Sample entries from a tensor with dimmesions stored
     in dims from a gaussian distribution with mean 0 and sd 1
@@ -14,7 +18,7 @@ function randomtensor(d, n, variance, dist)
     #sample tensor of size (n+1) of d dimensions
     rng = MersenneTwister()
     if dist == "normal"
-        return variance*randn(rng, Float64, repeat([n + 1], d)...)
+        return randn(rng, Float64, repeat([n + 1], d)...)
     else dist == "uniform"
         return rand(rng, Float64, repeat([n + 1], d)...).-0.5
     end
@@ -45,10 +49,12 @@ function equation_i(T_i, vec)
     return tot
 end
 
-function getsystem(vars, B, d, n)
+function getsystem(vars, d, n, dist)
     """
     Build system of polynomials
     """
+    #sample a random tensor
+    B = randomtensor(d, n, dist)
     #add a constant species
     vars = [vars; 1]
     #initialize system of ODEs as empty list
@@ -67,15 +73,14 @@ function multinomialcoeff(n, kvec)
     """
     Compute multinomial coefficient
     """
-    num = factorial(big(n))
-    den = prod([factorial(big(i)) for i in kvec])
-    return num/den
+    num = factorial(n)
+    den = prod([factorial(i) for i in kvec])
+    return num/(den*factorial(n-sum(kvec)))
 end
 
 function rand_poly_dist(T, 
     vars::AbstractVector, 
     d::Integer,
-    dist::String; 
     homogeneous::Bool = false
 )
     """
@@ -85,32 +90,32 @@ function rand_poly_dist(T,
     M = monomials(vars, d; affine = !homogeneous)
     n_terms = length(M)
     coefficient_list = zeros(Float64, n_terms)
-    if dist == "normal"
-        for i in 1:n_terms
-            monomial_i = M[i]
-            #get exponents of each variable in monomial i
-            exponents, coeffs = exponents_coefficients(monomial_i, vars)
-            monomial_degree = degree(monomial_i)
-            #compute the variance of ith coefficient using mulitinomial coefficient
-            variance = multinomialcoeff(monomial_degree, exponents)
-            #sample ith coefficient from a gaussian with computed variance
-            coefficient_list[i] = variance*randn(T)
-        end
-        sum(coefficient_list .* M)
-    else dist == "uniform"
-        sum((rand(T, length(M)).-0.5).*M)
+    for i in 1:n_terms
+        monomial_i = M[i]
+        #get exponents of each variable in monomial i
+        exponents, coeffs = exponents_coefficients(monomial_i, vars)
+        #monomial_degree = degree(monomial_i)
+        #compute the variance of ith coefficient using mulitinomial coefficient
+        variance = multinomialcoeff(d, exponents)
+        #sample ith coefficient from a gaussian with computed variance
+        #coefficient_list[i] = sqrt(variance)*randn(T)
+        #symmetric case:
+        coefficient_list[i] = variance*randn(T)
     end
+    #println(sum(coefficient_list .* M))
+    sum(coefficient_list .* M)
 end
 
-function randomsystem(vars, d, n, dist)
+function randomsystem(vars, d, n)
     """
     Build system of random polynomials
     """
+    
     #initialize place holder for polynomial system
     equations = []
     #construct system
     for i in 1:n
-        append!(equations, rand_poly_dist(Float64, vars, d, dist))
+        append!(equations, rand_poly_dist(Float64, vars, d))
     end
     System(equations)
 end
@@ -122,13 +127,10 @@ function one_simulation(d, n, s, x, variance, dist)
     when interaction coefficients are iid variables centered at 0, sampled
     from a certain distribution (so far, it can be gaussian or uniform).
     """
-    #syst = randomsystem(x, d, n, dist)
-    B = randomtensor(d, n, variance, dist)
-    syst = getsystem(x, B, d, n)
-    #show solving progress only if slow
-    if n^(d-1) > 1024 show = true else show = false end
+    syst = randomsystem(x, d-1, n)
+    #syst = getsystem(x, d, n, dist)
     #solve system and get real solutions
-    real_sols = real_solutions(solve(syst, show_progress = show))
+    real_sols = real_solutions(solve(syst, show_progress=false))
     nsol = length(real_sols)
     #get positive solutions
     pos_sols = filter(s -> all(s .> 0), real_sols)
@@ -151,46 +153,47 @@ function one_simulation(d, n, s, x, variance, dist)
     return add_rows
 end
 
-function main(div_vec, hois_vec, n_sim, variance, dist, stability)
+function main(n_ds, n_sim, variance, dist, stability)
     """
     Run bulk of simulations
     """
-    n_hoi = length(hois_vec)
-    n_div = length(div_vec)
+    n_pairs = length(n_ds)
     #set the number of columns depending on what is to be stored
     if stability n_col = 5 else n_col = 4 end
-    #loop over order of interactions
-    for d in hois_vec
+    #loop over order of interactions and diversity pairs
+    for n_d in 1:n_pairs
+        n = n_ds[n_d][1]
+        d = n_ds[n_d][2]+1
         print("Dimension of HOIs: ")
         println(d)
-        #loop over diversities
-        for n in div_vec
-            print("Diversity: ")
-            println(n)
-            #declare dynamic variables
-            @var x[1:n]
-            #preallocate matrix to store results
-            n_eq_mat = zeros(Float64, 1, n_col)
-            #loop over simulations for each n
-            for s in 1:n_sim
-                add_rows = one_simulation(d, n, s, x, variance, dist)
-                n_eq_mat = vcat(n_eq_mat, add_rows)
-            end
-            #after all simulations have ended, save
-            writedlm("Rcode/n_"*string(n)*"_d_"*string(d)*".csv", n_eq_mat)
+        print("Diversity: ")
+        println(n)
+        #declare dynamic variables
+        @var x[1:n]
+        #preallocate matrix to store results
+        n_eq_mat = zeros(Float64, 1, n_col)
+        #loop over simulations for each n
+        println("Simulation number:")
+        for s in 1:n_sim
+            #print progress
+            if s==n_sim println(" ", s) else print(" ", s) end
+            #store results
+            add_rows = one_simulation(d, n, s, x, variance, dist)
+            n_eq_mat = vcat(n_eq_mat, add_rows)
         end
+        #after all simulations have ended, save
+        writedlm("../data/symmetric_case/n_"*string(n)*"_d_"*string(d)*".csv", n_eq_mat)
     end
 end
 
 #set parameters
-deg_vec = [1 2 3 4] #polynomial degrees
-div_vec = [6] #number of species
-n_sim = 5000 #number of simulations
+n_ds = get_n_ds(8, 7, 5000)
+n_sim = 500 #number of simulations
 var = 1
 dist = "normal"
 stability = false
 #run simulations
-data = main(div_vec, deg_vec.+1, n_sim, var, dist, stability)
+@time main(n_ds, n_sim, var, dist, stability)
 #save data
 #max_deg = string(maximum(deg_vec))
 #max_div = string(maximum(div_vec))
