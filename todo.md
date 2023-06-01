@@ -1,4 +1,3 @@
-- push changes
 - Bring back stefanos data from the past
 - Select only the ones that are not already in merge
 - put them in a safe box
