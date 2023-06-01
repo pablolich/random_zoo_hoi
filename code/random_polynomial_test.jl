@@ -7,7 +7,7 @@ using LinearAlgebra #to take matrix products
 using DelimitedFiles #to load and save files
 
 function get_n_ds(max_n, max_d, comp_limit)
-    return [(x, y) for x in 1:8, y in 1:6 if y^x<5000]
+    return [(x, y) for x in 1:max_n, y in 1:max_d if y^x<5000]
 end
 
 function randomtensor(d, n, dist)
@@ -69,18 +69,43 @@ function getsystem(vars, d, n, dist)
     System(equations)
 end
 
+###############################################################################
+
 function multinomialcoeff(n, kvec)
     """
     Compute multinomial coefficient
     """
     num = factorial(n)
     den = prod([factorial(i) for i in kvec])
-    return num/(den*factorial(n-sum(kvec)))
+    return num/den
+end
+
+function variance_a(assumption, d, j_vec)
+    """
+    Compute variance for specific assumption
+    """
+    if assumption=="kss"
+        j_vec_expanded = [j_vec; (d - sum(j_vec))]
+        variance = multinomialcoeff(d, j_vec_expanded)
+    elseif assumption=="symmetric"
+        variance = (multinomialcoeff(sum(j_vec), j_vec))^2
+    elseif assumption=="antisymmetric"
+        n_perm = multinomialcoeff(sum(j_vec), j_vec)
+        if iseven(n_perm)
+            variance = 0
+        else
+            variance = 1
+        end
+    else 
+        print(assumption*" is not a valid assumption")
+    end
+    return variance
 end
 
 function rand_poly_dist(T, 
     vars::AbstractVector, 
     d::Integer,
+    assumption::String,
     homogeneous::Bool = false
 )
     """
@@ -96,17 +121,15 @@ function rand_poly_dist(T,
         exponents, coeffs = exponents_coefficients(monomial_i, vars)
         #monomial_degree = degree(monomial_i)
         #compute the variance of ith coefficient using mulitinomial coefficient
-        variance = multinomialcoeff(d, exponents)
+        variance = variance_a(assumption, d, exponents)
         #sample ith coefficient from a gaussian with computed variance
-        #coefficient_list[i] = sqrt(variance)*randn(T)
-        #symmetric case:
-        coefficient_list[i] = variance*randn(T)
+        coefficient_list[i] = sqrt(variance)*randn(T)
     end
     #println(sum(coefficient_list .* M))
     sum(coefficient_list .* M)
 end
 
-function randomsystem(vars, d, n)
+function randomsystem(vars, d, n, assumption)
     """
     Build system of random polynomials
     """
@@ -115,19 +138,19 @@ function randomsystem(vars, d, n)
     equations = []
     #construct system
     for i in 1:n
-        append!(equations, rand_poly_dist(Float64, vars, d))
+        append!(equations, rand_poly_dist(Float64, vars, d, assumption))
     end
     System(equations)
 end
 
-function one_simulation(d, n, s, x, variance, dist)
+function one_simulation(d, n, s, x, variance, dist, assumption)
     """
     Computes the number of real, and feasible equilibria, and (if asked) their local stability, 
     for a system of n species with interactions up to order d, 
     when interaction coefficients are iid variables centered at 0, sampled
     from a certain distribution (so far, it can be gaussian or uniform).
     """
-    syst = randomsystem(x, d-1, n)
+    syst = randomsystem(x, d-1, n, assumption)
     #syst = getsystem(x, d, n, dist)
     #solve system and get real solutions
     real_sols = real_solutions(solve(syst, show_progress=false))
@@ -153,7 +176,7 @@ function one_simulation(d, n, s, x, variance, dist)
     return add_rows
 end
 
-function main(n_ds, n_sim, variance, dist, stability)
+function main(n_ds, n_sim, variance, dist, stability, assumption, merge)
     """
     Run bulk of simulations
     """
@@ -171,29 +194,37 @@ function main(n_ds, n_sim, variance, dist, stability)
         #declare dynamic variables
         @var x[1:n]
         #preallocate matrix to store results
-        n_eq_mat = zeros(Float64, 1, n_col)
+        n_eq_mat = zeros(Float64, n_sim, n_col)
         #loop over simulations for each n
         println("Simulation number:")
         for s in 1:n_sim
             #print progress
             if s==n_sim println(" ", s) else print(" ", s) end
             #store results
-            add_rows = one_simulation(d, n, s, x, variance, dist)
-            n_eq_mat = vcat(n_eq_mat, add_rows)
+            add_rows = one_simulation(d, n, s, x, variance, dist, assumption)
+            n_eq_mat[s,:] = add_rows
         end
-        #after all simulations have ended, save
-        writedlm("../data/symmetric_case/n_"*string(n)*"_d_"*string(d)*".csv", n_eq_mat)
+        #after all simulations have ended, save a copy in the safe directory
+        writedlm("../data/check_kss_variance/n_"*string(n)*"_d_"*string(d)*".csv", n_eq_mat)
+        #if merge is true, add a copy to the merging files situation
+        if merge
+            open("../data/merged_files/n_"*string(n)*"_d_"*string(d)*".csv", "a") do io
+                writedlm(io, n_eq_mat)
+            end
+        end
     end
 end
 
 #set parameters
-n_ds = get_n_ds(8, 7, 5000)
-n_sim = 500 #number of simulations
+n_ds = get_n_ds(4, 6, 5000)
+n_sim = 1000 #number of simulations
 var = 1
 dist = "normal"
 stability = false
+assumption = "kss"
+merge = false
 #run simulations
-@time main(n_ds, n_sim, var, dist, stability)
+@time main(n_ds, n_sim, var, dist, stability, assumption, merge)
 #save data
 #max_deg = string(maximum(deg_vec))
 #max_div = string(maximum(div_vec))
