@@ -1,13 +1,15 @@
+- Check that my check_kss_variance files behave like expected.
+- Run symmetric case.
+- Fix antisymmetric case
+- Merge all good simulations in the merging directory
+- Check if merged simulations reduce the gap
+- Check if the old simulations still work
+- Implement specific n and d input
+- Run more simulations of the old ones for specific n, and ds to fill in simulations I am missing
 - Can we run julia in the cluster?  
-- Implement parity restricted minimzation routine
-- Implement infinitely growing files (if the problem is not enough simulations)
 - Why do I not get the more feasibility as increasing number of resources type of behaviour?
-- Beyond standard gaussianity
 - Comment latex code
-- Look at polynomials associated with symmetric tensors
-- What is faster, KSS or RE?
 - Calculate variance of the coefficients of GLV based on experiments
-- Calculate inflexion point for which pfeas starts increasing with n
 - Explain the 1/2^n that seems to be obvious to mathematicians
 - Check that variance converges to the theoretical formula
 - Find a way to convert r, A, B, ... to a polynomial in julia

@@ -184,6 +184,7 @@ function main(n_ds, n_sim, variance, dist, stability, assumption, merge)
     #set the number of columns depending on what is to be stored
     if stability n_col = 5 else n_col = 4 end
     #loop over order of interactions and diversity pairs
+    println("Running simulations under "*assumption*" case")
     for n_d in 1:n_pairs
         n = n_ds[n_d][1]
         d = n_ds[n_d][2]+1
