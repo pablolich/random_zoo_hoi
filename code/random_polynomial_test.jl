@@ -176,7 +176,7 @@ function one_simulation(d, n, s, x, variance, dist, assumption)
     return add_rows
 end
 
-function main(n_ds, n_sim, variance, dist, stability, assumption, merge)
+function main(n_ds, n_sim, variance, dist, stability, assumption, merge, save_folder)
     """
     Run bulk of simulations
     """
@@ -206,11 +206,11 @@ function main(n_ds, n_sim, variance, dist, stability, assumption, merge)
             n_eq_mat[s,:] = add_rows
         end
         #after all simulations have ended, save a copy in the safe directory
-        writedlm("../data/check_kss_variance/n_"*string(n)*"_d_"*string(d)*".csv", n_eq_mat)
+        writedlm("../data/"*save_folder*"/n_"*string(n)*"_d_"*string(d)*".csv", n_eq_mat, ' ')
         #if merge is true, add a copy to the merging files situation
         if merge
-            open("../data/merged_files/n_"*string(n)*"_d_"*string(d)*".csv", "a") do io
-                writedlm(io, n_eq_mat)
+            open("../data/"*save_folder*"/n_"*string(n)*"_d_"*string(d)*".csv", "a") do io
+                writedlm(io, n_eq_mat, ' ')
             end
         end
     end
@@ -222,13 +222,14 @@ n_sim = 1000 #number of simulations
 var = 1
 dist = "normal"
 stability = false
-assumption = "kss"
+assumption = "symmetric"
+save_folder = "kss_polynomials"
 merge = false
 #run simulations
-@time main(n_ds, n_sim, var, dist, stability, assumption, merge)
+@time main(n_ds, n_sim, var, dist, stability, assumption, merge, save_folder)
 #save data
 #max_deg = string(maximum(deg_vec))
 #max_div = string(maximum(div_vec))
 #stab = string(stability)
 #output_name = "deg_"*max_deg*"_div_"*max_div*"_s_"*string(n_sim)*"_"*dist*"_stab"*stab
-#writedlm("../data/expected_n_roots_"*output_name*".csv", data)
+#writedlm("../data/expected_n_roots_"*output_name*".csv", data, delim="")
