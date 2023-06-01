@@ -200,7 +200,7 @@ function main(n_ds, n_sim, variance, dist, stability, assumption, merge, save_fo
         println("Simulation number:")
         for s in 1:n_sim
             #print progress
-            if s==n_sim println(" ", s) else print(" ", s) end
+            if s==n_sim println(" ", s) elseif rem(s, 100)==0 print(" ", s)  else continue end
             #store results
             add_rows = one_simulation(d, n, s, x, variance, dist, assumption)
             n_eq_mat[s,:] = add_rows
@@ -222,7 +222,7 @@ n_sim = 1000 #number of simulations
 var = 1
 dist = "normal"
 stability = false
-assumption = "symmetric"
+assumption = "kss"
 save_folder = "kss_polynomials"
 merge = false
 #run simulations

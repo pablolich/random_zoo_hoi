@@ -11,10 +11,11 @@ expected_value_expansion = function(n, d, var, skw, order){
 } 
 
 results <- tibble()
-for (n in c(0,1,2,3,4,5,6,7,8)){
+for (n in c(1,2,3,4,5,6,7,8)){
   for (d in c(2,3,4,5,6,7)){
     f1 <-  paste0("n_", n, "_d_", d, ".csv")
-    if (file.exists(f1)){
+    path = "../data/merged_files/"
+    if (file.exists(paste0(path,f1))){
       dt <- read.table(f1, sep = "\t", header = T)
       if (length(dt) == 1){
         dt <- read.table(f1, sep = ",", header = T)

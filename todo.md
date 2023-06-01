@@ -1,9 +1,18 @@
-- Run symmetric case.
+- push changes
+- Bring back stefanos data from the past
+- Select only the ones that are not already in merge
+- put them in a safe box
+- transform stefanos data without comas
+- merge one by one by hand
+- Plot and check if it looks allright
+- push changes
+------------------------------------------------------------------
+- What is going on with all the zeros there?
 - Check kss_polynomials folder
-- Fix antisymmetric case (email Alex)
+- Check symmetric_case folder
 - Merge all good simulations in the merging directory
 - Check if merged simulations reduce the gap
-- Check if the old simulations still work
+- Check if the old simulations still work to run fast more of these
 - Implement specific n and d input
 - Run more simulations of the old ones for specific n, and ds to fill in simulations I am missing
 - Minimize using the variance
