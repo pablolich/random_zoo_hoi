@@ -1,37 +1,18 @@
-f_x = function(n, i){
-  return((1-1/2^n)^i)
-}
-
-f2_x = function(n, i){
-  return(log(1-1/2^n)^2*(1-1/2^n)^(i))
-}
-
-f3_x = function(n, i){
-  return((1 - 2^(-n))^i*log(1 - 2^(-n))^3)
-}
-
 expected_value_expansion = function(n, d, var, skw, order){
-  mean_x = sqrt(d^n)
-  #evaluate function and second derivative at mean
-  f_mean = f_x(n, mean_x)
-  f2_mean = f2_x(n, mean_x)
-  f3_mean = f2_x(n, mean_x)
-  
   if (order == 1){
-    approx = f_mean 
+    approx = (1 - 1/2^n)^(d^(n/2))
   } else if (order == 2){
-    approx = f_mean + 1/2*f2_mean*var 
+    approx = (1 - 1/2^n)^(d^(n/2))*(1+1/2*log(1-1/2^n)^2*var)
     
   } else{
-    approx = f_mean + 1/2*f2_mean*var + 1/6*f3_mean*skw
+    approx = (1 - 1/2^n)^(d^(n/2))*(1+1/2*log(1-1/2^n)^2*var+1/6*log(1-1/2^n)^3*skw)
   }
   return(approx)
 } 
 
 results <- tibble()
 for (n in c(0,1,2,3,4,5,6,7,8)){
-  for (d in c(2,3,4,5,6)){
-    #for (d in c(3,5)){
+  for (d in c(2,3,4,5,6,7)){
     f1 <-  paste0("n_", n, "_d_", d, ".csv")
     if (file.exists(f1)){
       dt <- read.table(f1, sep = "\t", header = T)
@@ -39,8 +20,6 @@ for (n in c(0,1,2,3,4,5,6,7,8)){
         dt <- read.table(f1, sep = ",", header = T)
       }
       colnames(dt) = c("n", "d", "nsol", "npos")
-      n <- dt$n[1]
-      d <- dt$d[1]
       if ((d-1) %% 2  == 0){
         dt_test = dt %>% filter(nsol %% 2 == 0)
       } else{
@@ -67,6 +46,8 @@ for (n in c(0,1,2,3,4,5,6,7,8)){
         pfeas_exp1 = exptaylor1,
         pfeas_exp2 = exptaylor2,
         pfeas_exp3 = exptaylor3,
+        var_real = var_real,
+        skw_real = skw_real
       ))
     }
   }
