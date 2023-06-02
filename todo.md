@@ -1,24 +1,24 @@
-- What is going on with all the zeros there?
-- Check kss_polynomials folder
-- Check symmetric_case folder
-- Merge all good simulations in the merging directory
-- Check if merged simulations reduce the gap
-- Check if the old simulations still work to run fast more of these
-- Implement specific n and d input
-- Run more simulations of the old ones for specific n, and ds to fill in simulations I am missing
+- Check old simulaitons
+- If they look good merge manually
+- Plot latex to see if they get closer to the triangles
+- If yes, run simulations for big guns with merge = true
+- Address alex comments
+- Run simulations dropping assumptions
+------------------------------------------------------------------------------------
 - Minimize using the variance
 - Check asymptotic formula, AGAIN
 - Write down Chebyshev proof
+- Write down proof of parity under anty-symmetric case
 - Make plots of variances of coefficients
-- Consider if/where to put plots of histograms of roots, and how to create them in latex
+- Consider if/where to put plots of histograms of roots, and how to create them in latex. Maybe in a section called: Simulation protocol and results
 - Can we run julia in the cluster?  
+------------------------------------------------------------------------------------
+- Investigate other models
 - Why do I not get the more feasibility as increasing number of resources type of behaviour?
+------------------------------------------------------------------------------------
 - Comment latex code
 - Calculate variance of the coefficients of GLV based on experiments
-- Explain the 1/2^n that seems to be obvious to mathematicians
-- Check that variance converges to the theoretical formula
-- Find a way to convert r, A, B, ... to a polynomial in julia
+- Explain the 1/2^n that seems to be obvious to mathematicians should we email duong?
+-----------------------------------------------------------------------------------
+- Write paper introduction
 
-
-LIST OF FILES TO MERGE
-1. check_kss_variance

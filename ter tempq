@@ -1,0 +1,34 @@
+* [33m97fe074[m[33m ([m[1;36mHEAD -> [m[1;32mtemp[m[33m)[m merged sa data and pl data
+* [33m8d3f3be[m[33m ([m[1;31morigin/master[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmaster[m[33m)[m updating todo list
+* [33ma51634d[m started merging data and unifying formats
+* [33m738d37c[m streamlined simulations generator
+* [33m11d236c[m wrote an exhaustive todo list
+* [33m6a92dd0[m implemented merging of files and different variance structures
+* [33m9a899e0[m fuck me
+* [33m71f7754[m a bunch of updates
+* [33m4cc60ab[m coding realistic models
+* [33m83d98b5[m up date to work remote
+* [33mda833d7[m fixed bug of taylor expansion
+* [33m6e64825[m started working on the variance
+* [33mb820f86[m fixed bug with pfeas_binom_odd_even
+* [33mbd8c74e[m simplified code for solving polynomial systems
+* [33md7334e0[m added binomial approximation of pfeas
+* [33mf451bf7[m stability data correctly stored, fixed sampling bugs
+* [33mc6adf8e[m started todo list
+*   [33md95b981[m Merge branch 'master' of github.com:pablolich/random_zoo_hoi
+[32m|[m[33m\[m  
+[32m|[m * [33m9e4d39d[m simulations in R + bertini; all up to 5; also 3 6dims
+* [33m|[m [33mc366025[m wrote code to calculatin local stability of all feasible equilibria
+[33m|[m[33m/[m  
+* [33mce381bd[m easier and faster way to sample dense iid random polynomials
+* [33mcfa35d7[m now timing it
+* [33m2fc6209[m .
+* [33mc9168a8[m included case of d = 2, 3. Fixed some bugs
+* [33mbbb78ce[m calculating number of equilibria for arbitrary n, and d
+* [33md16592f[m build system of polynomials of order d
+* [33mdae1781[m build_eq_i builds equation i of polynomial system with n species and hois of dimesnion d
+* [33m96bc7bf[m added check of how many Bs with same equilibria up to sign change
+* [33me042ce3[m writing GLV with interactions up to order d
+* [33m0b00aee[m added analysis of data
+* [33m26537af[m Update README.md
+* [33mdbfd596[m first commit

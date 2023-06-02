@@ -6,8 +6,14 @@ using HomotopyContinuation #to solve systems of polynomials numerically
 using LinearAlgebra #to take matrix products
 using DelimitedFiles #to load and save files
 
-function get_n_ds(max_n, max_d, comp_limit)
-    return [(x, y) for x in 1:max_n, y in 1:max_d if y^x<5000]
+function get_n_ds(max_n, max_d, comp_limit, specific_pairs)
+    if specific_pairs
+        n_d = hcat(max_n, max_d)
+        nrow = size(n_d, 1)
+        return [(n_d[i,1], n_d[i,2]) for i in 1:nrow]
+    else
+        return [(x, y) for x in 1:max_n, y in 1:max_d if y^x<5000]
+    end
 end
 
 function randomtensor(d, n, dist)
@@ -150,8 +156,8 @@ function one_simulation(d, n, s, x, variance, dist, assumption)
     when interaction coefficients are iid variables centered at 0, sampled
     from a certain distribution (so far, it can be gaussian or uniform).
     """
-    syst = randomsystem(x, d-1, n, assumption)
-    #syst = getsystem(x, d, n, dist)
+    #syst = randomsystem(x, d-1, n, assumption)
+    syst = getsystem(x, d, n, dist)
     #solve system and get real solutions
     real_sols = real_solutions(solve(syst, show_progress=false))
     nsol = length(real_sols)
@@ -200,7 +206,7 @@ function main(n_ds, n_sim, variance, dist, stability, assumption, merge, save_fo
         println("Simulation number:")
         for s in 1:n_sim
             #print progress
-            if s==n_sim println(" ", s) elseif rem(s, 100)==0 print(" ", s)  else continue end
+            if s==n_sim println(" ", s) elseif rem(s, 100)==0 print(" ", s)  else end
             #store results
             add_rows = one_simulation(d, n, s, x, variance, dist, assumption)
             n_eq_mat[s,:] = add_rows
@@ -217,8 +223,8 @@ function main(n_ds, n_sim, variance, dist, stability, assumption, merge, save_fo
 end
 
 #set parameters
-n_ds = get_n_ds(4, 6, 5000)
-n_sim = 1000 #number of simulations
+n_ds = get_n_ds([4;5;6;7;4;5;6], [3;3;3;3;4;4;4], 5000, true) #d is the degree of the polynomial here
+n_sim = 5000 #number of simulations
 var = 1
 dist = "normal"
 stability = false
