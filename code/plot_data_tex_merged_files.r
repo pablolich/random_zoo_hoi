@@ -63,7 +63,7 @@ write.table(dat0, '../data/pfeas_sims.dat', sep = " ", row.names = F,
 write.table(dat1, '../data/pfeas_approx1.dat', sep = " ", row.names = F,
             quote=F)
 write.table(dat2, '../data/pfeas_approx2.dat', sep = " ", row.names = F,
-            ,quote=F)
+            quote=F)
 write.table(dat3, '../data/pfeas_approx3.dat', sep = " ", row.names = F,
             quote=F)
 write.table(dat4, '../data/pfeas_approx2_n.dat', sep = " ", row.names = F,

@@ -14,11 +14,11 @@ results <- tibble()
 for (n in c(1,2,3,4,5,6,7,8)){
   for (d in c(2,3,4,5,6,7)){
     f1 <-  paste0("n_", n, "_d_", d, ".csv")
-    path = "../data/merged_files/"
+    path = "Rcode/"
     if (file.exists(paste0(path,f1))){
-      dt <- read.table(f1, sep = "\t", header = T)
+      dt <- read.table(paste0(path,f1), sep = "\t", header = T)
       if (length(dt) == 1){
-        dt <- read.table(f1, sep = ",", header = T)
+        dt <- read.table(paste0(path,f1), sep = ",", header = T)
       }
       colnames(dt) = c("n", "d", "nsol", "npos")
       if ((d-1) %% 2  == 0){
@@ -68,7 +68,7 @@ write.table(dat0, '../../data/pfeas_sims.dat', sep = " ", row.names = F,
 write.table(dat1, '../../data/pfeas_approx1.dat', sep = " ", row.names = F,
             quote=F)
 write.table(dat2, '../../data/pfeas_approx2.dat', sep = " ", row.names = F,
-            ,quote=F)
+            quote=F)
 write.table(dat3, '../../data/pfeas_approx3.dat', sep = " ", row.names = F,
             quote=F)
 write.table(dat4, '../../data/pfeas_approx2_n.dat', sep = " ", row.names = F,

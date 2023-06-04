@@ -1,11 +1,9 @@
-- Check old simulaitons
-- If they look good merge manually
 - Plot latex to see if they get closer to the triangles
 - If yes, run simulations for big guns with merge = true
 - Address alex comments
 - Run simulations dropping assumptions
+- save numbers as integers in julia, they weight less
 ------------------------------------------------------------------------------------
-- Minimize using the variance
 - Check asymptotic formula, AGAIN
 - Write down Chebyshev proof
 - Write down proof of parity under anty-symmetric case
