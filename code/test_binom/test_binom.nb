@@ -1,0 +1,142 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 11.3' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      4311,        132]
+NotebookOptionsPosition[      3318,        108]
+NotebookOutlinePosition[      3651,        123]
+CellTagsIndexPosition[      3608,        120]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{"ClearAll", "[", "\"\<Global`*\>\"", "]"}]], "Input",
+ CellChangeTimes->{{3.8951455129988937`*^9, 3.895145522102379*^9}},
+ CellLabel->"In[3]:=",ExpressionUUID->"565416d0-503e-47bc-9bae-dfac441b6dab"],
+
+Cell["Binomial distribution", "Text",
+ CellChangeTimes->{{3.895145436197632*^9, 
+  3.895145442586178*^9}},ExpressionUUID->"2b68e699-dfc1-4510-8c72-\
+b3ed57a961ef"],
+
+Cell["1. Find p", "Text",
+ CellChangeTimes->{{3.8951454488617697`*^9, 
+  3.895145465948811*^9}},ExpressionUUID->"d5574c72-9d4c-41af-a693-\
+3e2cb3c81cd6"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"p", "=", 
+  RowBox[{"p", "/.", 
+   RowBox[{
+    RowBox[{"Solve", "[", 
+     RowBox[{
+      RowBox[{
+       RowBox[{
+        RowBox[{"d", "^", "n"}], " ", "p"}], " ", "\[Equal]", " ", 
+       RowBox[{
+        RowBox[{"1", "/", 
+         RowBox[{"2", "^", "n"}]}], " ", 
+        RowBox[{"d", "^", 
+         RowBox[{"(", 
+          RowBox[{"n", "/", "2"}], ")"}]}]}]}], ",", "p"}], "]"}], "[", 
+    RowBox[{"[", "1", "]"}], "]"}]}]}]], "Input",
+ CellChangeTimes->{{3.895145469437316*^9, 3.89514552959836*^9}},
+ CellLabel->"In[4]:=",ExpressionUUID->"8b0290b7-c1c6-4b58-8b77-f9ed4f960712"],
+
+Cell[BoxData[
+ RowBox[{
+  SuperscriptBox["2", 
+   RowBox[{"-", "n"}]], " ", 
+  SuperscriptBox["d", 
+   RowBox[{
+    RowBox[{"-", "n"}], "/", "2"}]]}]], "Output",
+ CellChangeTimes->{{3.89514549650845*^9, 3.8951455310717382`*^9}},
+ CellLabel->"Out[4]=",ExpressionUUID->"c7124926-52b2-4421-a53f-8cfaf7b8c422"]
+}, Open  ]],
+
+Cell["2. Find the probability of feasibility", "Text",
+ CellChangeTimes->{{3.895145534471086*^9, 
+  3.895145544774446*^9}},ExpressionUUID->"39e2708b-c896-44a6-9404-\
+3b0949bfd22f"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{"pfeas", " ", "=", " ", 
+  RowBox[{"FullSimplify", "[", 
+   RowBox[{
+    RowBox[{"1", "-", " ", 
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{"1", "-", "p"}], ")"}], "^", 
+      RowBox[{"(", 
+       RowBox[{"d", "^", "n"}], ")"}]}]}], ",", 
+    RowBox[{"Assumptions", "\[Rule]", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{"n", ">", "1"}], ",", 
+       RowBox[{"d", ">", "1"}]}], "}"}]}]}], "]"}]}]], "Input",
+ CellChangeTimes->{{3.895145549855138*^9, 3.895145586672104*^9}},
+ CellLabel->"In[8]:=",ExpressionUUID->"106f534b-6d8e-4ee7-9fee-a282d0ddf569"],
+
+Cell[BoxData[
+ RowBox[{"1", "-", 
+  SuperscriptBox[
+   RowBox[{"(", 
+    RowBox[{"1", "-", 
+     RowBox[{
+      SuperscriptBox["2", 
+       RowBox[{"-", "n"}]], " ", 
+      SuperscriptBox["d", 
+       RowBox[{
+        RowBox[{"-", "n"}], "/", "2"}]]}]}], ")"}], 
+   SuperscriptBox["d", "n"]]}]], "Output",
+ CellChangeTimes->{{3.895145564413789*^9, 3.895145587583315*^9}},
+ CellLabel->"Out[8]=",ExpressionUUID->"95beae17-ec8b-4630-893b-e55f11d7d9d0"]
+}, Open  ]]
+},
+WindowSize->{924, 1136},
+WindowMargins->{{Automatic, 0}, {0, Automatic}},
+FrontEndVersion->"11.3 for Linux x86 (64-bit) (March 6, 2018)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 222, 3, 31, "Input",ExpressionUUID->"565416d0-503e-47bc-9bae-dfac441b6dab"],
+Cell[783, 25, 163, 3, 36, "Text",ExpressionUUID->"2b68e699-dfc1-4510-8c72-b3ed57a961ef"],
+Cell[949, 30, 153, 3, 36, "Text",ExpressionUUID->"d5574c72-9d4c-41af-a693-3e2cb3c81cd6"],
+Cell[CellGroupData[{
+Cell[1127, 37, 608, 17, 31, "Input",ExpressionUUID->"8b0290b7-c1c6-4b58-8b77-f9ed4f960712"],
+Cell[1738, 56, 306, 8, 37, "Output",ExpressionUUID->"c7124926-52b2-4421-a53f-8cfaf7b8c422"]
+}, Open  ]],
+Cell[2059, 67, 180, 3, 36, "Text",ExpressionUUID->"39e2708b-c896-44a6-9404-3b0949bfd22f"],
+Cell[CellGroupData[{
+Cell[2264, 74, 586, 16, 31, "Input",ExpressionUUID->"106f534b-6d8e-4ee7-9fee-a282d0ddf569"],
+Cell[2853, 92, 449, 13, 75, "Output",ExpressionUUID->"95beae17-ec8b-4630-893b-e55f11d7d9d0"]
+}, Open  ]]
+}
+]
+*)
+
+(* End of internal cache information *)
+
