@@ -1,5 +1,4 @@
 - Bring back the sparsity assumption
-- Address alex comments
 - Run simulations dropping assumptions
 ------------------------------------------------------------------------------------
 - Check asymptotic formula, AGAIN
@@ -12,6 +11,7 @@
 - Why do I not get the more feasibility as increasing number of resources type of behaviour?
 ------------------------------------------------------------------------------------
 - Comment latex code
+- add 1/2 contour line to the heatmap plot
 - Explain the 1/2^n that seems to be obvious to mathematicians should we email duong?
 -----------------------------------------------------------------------------------
 - Write paper introduction
