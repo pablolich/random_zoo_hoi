@@ -1,12 +1,9 @@
-- Plot latex to see if they get closer to the triangles
-- If yes, run simulations for big guns with merge = true
+- Bring back the sparsity assumption
 - Address alex comments
 - Run simulations dropping assumptions
-- save numbers as integers in julia, they weight less
 ------------------------------------------------------------------------------------
 - Check asymptotic formula, AGAIN
 - Write down Chebyshev proof
-- Write down proof of parity under anty-symmetric case
 - Make plots of variances of coefficients
 - Consider if/where to put plots of histograms of roots, and how to create them in latex. Maybe in a section called: Simulation protocol and results
 - Can we run julia in the cluster?  
@@ -15,7 +12,6 @@
 - Why do I not get the more feasibility as increasing number of resources type of behaviour?
 ------------------------------------------------------------------------------------
 - Comment latex code
-- Calculate variance of the coefficients of GLV based on experiments
 - Explain the 1/2^n that seems to be obvious to mathematicians should we email duong?
 -----------------------------------------------------------------------------------
 - Write paper introduction

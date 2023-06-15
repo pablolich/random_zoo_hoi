@@ -13,9 +13,11 @@ expected_value_expansion = function(n, d, var, skw, order){
 results <- tibble()
 for (n in c(1,2,3,4,5,6,7,8)){
   for (d in c(2,3,4,5,6,7)){
-    f1 <-  paste0("../data/merged_files/n_", n, "_d_", d, ".csv")
+    f1 <-  paste0("../data/growing_file/n_", n, "_d_", d, ".csv")
     if (file.exists(f1)){
       dt <- read.table(f1, sep = " ", header = T)
+      #add names to columns
+      colnames(dt) = c("n", "d", "nsol", "npos")
       if ((d-1) %% 2  == 0){
         dt_test = dt %>% filter(nsol %% 2 == 0)
       } else{
@@ -27,7 +29,6 @@ for (n in c(1,2,3,4,5,6,7,8)){
       } else{
         skw_real = mean(((dt$nsol - mean(dt$nsol))/sqrt(var_real))^3)
       }
-      #jensen
       #calculate by taylor expanding the expected value
       exptaylor1 = 1 - expected_value_expansion(n, d-1, var_real, skw_real, 1)
       exptaylor2 = 1 - expected_value_expansion(n, d-1, var_real, skw_real, 2)

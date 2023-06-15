@@ -12,7 +12,7 @@ function get_n_ds(max_n, max_d, comp_limit, specific_pairs)
         nrow = size(n_d, 1)
         return [(n_d[i,1], n_d[i,2]) for i in 1:nrow]
     else
-        return [(x, y) for x in 1:max_n, y in 1:max_d if y^x<5000]
+        return [(x, y) for x in 1:max_n, y in 1:max_d if y^x<comp_limit]
     end
 end
 
@@ -156,7 +156,7 @@ function one_simulation(d, n, s, x, variance, dist, assumption)
     when interaction coefficients are iid variables centered at 0, sampled
     from a certain distribution (so far, it can be gaussian or uniform).
     """
-    #syst = randomsystem(x, d-1, n, assumption)
+    #syst = randomsystem(x, d-1, n, assumption) #d-1 is the polynomial degree
     syst = getsystem(x, d, n, dist)
     #solve system and get real solutions
     real_sols = real_solutions(solve(syst, show_progress=false))
@@ -189,50 +189,52 @@ function main(n_ds, n_sim, variance, dist, stability, assumption, merge, save_fo
     n_pairs = length(n_ds)
     #set the number of columns depending on what is to be stored
     if stability n_col = 5 else n_col = 4 end
-    #loop over order of interactions and diversity pairs
+    
     println("Running simulations under "*assumption*" case")
-    for n_d in 1:n_pairs
-        n = n_ds[n_d][1]
-        d = n_ds[n_d][2]+1
-        print("Dimension of HOIs: ")
-        println(d)
-        print("Diversity: ")
-        println(n)
-        #declare dynamic variables
-        @var x[1:n]
-        #preallocate matrix to store results
-        n_eq_mat = zeros(Float64, n_sim, n_col)
-        #loop over simulations for each n
-        println("Simulation number:")
-        for s in 1:n_sim
-            #print progress
-            if s==n_sim println(" ", s) elseif rem(s, 100)==0 print(" ", s)  else end
-            #store results
-            add_rows = one_simulation(d, n, s, x, variance, dist, assumption)
-            n_eq_mat[s,:] = add_rows
+    #loop over simulations
+    for s in 1:n_sim
+        #loop over order of interactions and diversity pairs (one parameter sweep)
+        for n_d in 1:n_pairs
+            n = n_ds[n_d][1]
+            d = n_ds[n_d][2]+1
+            print("Dimension of HOIs: ")
+            println(d)
+            print("Diversity: ")
+            println(n)
+            #declare dynamic variables
+            @var x[1:n]
+            #preallocate matrix to store results
+            n_eq_mat = zeros(Int64, n_sim, n_col)
+            #loop over simulations for each n
+            println("Simulation number:")  
+                #print progress
+                if s==n_sim println(" ", s) elseif rem(s, 100)==0 print(" ", s)  else end
+                #store results
+                add_rows = one_simulation(d, n, s, x, variance, dist, assumption)
+                n_eq_mat[s,:] = add_rows
+                #if merge is true, add a copy to the merging files
+                if merge
+                    open("../data/growing_file/n_"*string(n)*"_d_"*string(d)*".csv", "a") do io
+                        writedlm(io, add_rows, ' ')
+                    end
         end
         #after all simulations have ended, save a copy in the safe directory
         writedlm("../data/"*save_folder*"/n_"*string(n)*"_d_"*string(d)*".csv", n_eq_mat, ' ')
-        #if merge is true, add a copy to the merging files situation
-        if merge
-            open("../data/"*save_folder*"/n_"*string(n)*"_d_"*string(d)*".csv", "a") do io
-                writedlm(io, n_eq_mat, ' ')
-            end
-        end
     end
 end
 
 #set parameters
-n_ds = get_n_ds([4;5;6;7;4;5;6], [3;3;3;3;4;4;4], 5000, true) #d is the degree of the polynomial here
-n_sim = 5000 #number of simulations
+#d is the degree of the polynomial
+n_ds = get_n_ds(8, 6, 20000, false) 
+n_sim = 200 #number of simulations
 var = 1
 dist = "normal"
 stability = false
 assumption = "kss"
-save_folder = "kss_polynomials"
-merge = false
+save_folder = "test_homogenizing"
+merge = true
 #run simulations
-@time main(n_ds, n_sim, var, dist, stability, assumption, merge, save_folder)
+main(n_ds, n_sim, var, dist, stability, assumption, merge, save_folder)
 #save data
 #max_deg = string(maximum(deg_vec))
 #max_div = string(maximum(div_vec))
