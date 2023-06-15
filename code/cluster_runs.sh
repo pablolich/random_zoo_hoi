@@ -10,6 +10,6 @@
 #SBATCH --mem-per-cpu=1000
 
 
-module load julia/1.9
+module load julia/1.9.0
 
 julia cluster_simulations.jl 1 1
