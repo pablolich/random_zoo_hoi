@@ -114,7 +114,7 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     """
     Perform multiple parameter sweeps
     """
-    parameters = getparameters(8, 6, 20000, false)
+    parameters = getparameters(3, 3, 80000, false)
     #set seed for parameter sweep
     rng = MersenneTwister(seed)
     #initialize matrix for storing results
@@ -128,6 +128,9 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
         else
             manysweeps_result = [manysweeps_result; sweepresult] 
         end
+    end
+    open("../data/sweeps/sweeps"*string(seed)*".csv", "w") do io
+        writedlm(io, manysweeps_result, ' ')
     end
     return manysweeps_result
 end
