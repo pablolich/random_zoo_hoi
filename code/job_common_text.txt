@@ -7,9 +7,7 @@
 #SBATCH --partition=caslake
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --mem-per-cpu=1000
+#SBATCH --mem-per-cpu=40000
 
 
 module load julia/1.9.0
-
-julia cluster_simulations.jl 1 1

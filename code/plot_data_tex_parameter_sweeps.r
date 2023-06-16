@@ -1,3 +1,5 @@
+library(tidyverse)
+
 parameter_sweeps_results <- read.table("../data/parameter_sweeps.csv", 
                                        sep = " ", 
                                        header = T)
@@ -8,5 +10,5 @@ pfeas_results = parameter_sweeps_results %>%
   summarise(pfeas = mean(npos>0)) %>% 
   select(c(pfeas, n, d))
 #save data
-write.table(dat0, '../data/pfeas_sims.dat', sep = " ", row.names = F,
+write.table(pfeas_results, '../data/pfeas_sims.dat', sep = " ", row.names = F,
             quote = F)

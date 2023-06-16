@@ -58,7 +58,7 @@ function getsystem(variables::AbstractVector{Variable},
     System(equations)
 end
 
-function getparameters(max_n::Int64, max_d::Int64, 
+function getparameters(max_n, max_d, 
     comp_limit::Int64, specific_pairs::Bool)
     """
     Creates parameter pairs while keeping complexity bounded
@@ -87,7 +87,7 @@ function parameter_sweep(parameters, rng::AbstractRNG, save_rows)
         #create and solve system
         syst = getsystem(x, d, n, rng)
         #solve system and get real solutions
-        real_sols = real_solutions(solve(syst, show_progress=false))
+        real_sols = real_solutions(solve(syst, show_progress=true))
         #get number of real and positive solutions
         nsol = length(real_sols)
         pos_sols = filter(s -> all(s .> 0), real_sols)
@@ -121,7 +121,7 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     manysweeps_result = []
     println("Simulation number:")  
     for sweep in 1:n_sweeps
-        if sweep==n_sweeps println(" ", sweep) elseif rem(sweep, 10)==0 print(" ", sweep)  else end
+        if sweep==n_sweeps println(" ", sweep) elseif rem(sweep, 1)==0 print(" ", sweep)  else end
         sweepresult = parameter_sweep(parameters, rng, false)
         if sweep == 1 
             manysweeps_result = sweepresult 
@@ -132,5 +132,5 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     return manysweeps_result
 end
 
-#manysweeps(100, 1)  
+#manysweeps(1, 1) #n_sweeps, seed  
 @time manysweeps(parse(Int, ARGS[1]), parse(Int, ARGS[2]))

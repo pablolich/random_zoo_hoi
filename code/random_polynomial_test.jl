@@ -24,9 +24,9 @@ function randomtensor(d, n, dist)
     #sample tensor of size (n+1) of d dimensions
     rng = MersenneTwister()
     if dist == "normal"
-        return randn(rng, Float64, repeat([n + 1], d)...)
+        return randn(rng, Float16, repeat([n + 1], d)...)
     else dist == "uniform"
-        return rand(rng, Float64, repeat([n + 1], d)...).-0.5
+        return rand(rng, Float16, repeat([n + 1], d)...).-0.5
     end
 end
 
@@ -144,7 +144,7 @@ function randomsystem(vars, d, n, assumption)
     equations = []
     #construct system
     for i in 1:n
-        append!(equations, rand_poly_dist(Float64, vars, d, assumption))
+        append!(equations, rand_poly_dist(Float16, vars, d, assumption))
     end
     System(equations)
 end
@@ -156,10 +156,10 @@ function one_simulation(d, n, s, x, variance, dist, assumption)
     when interaction coefficients are iid variables centered at 0, sampled
     from a certain distribution (so far, it can be gaussian or uniform).
     """
-    #syst = randomsystem(x, d-1, n, assumption) #d-1 is the polynomial degree
-    syst = getsystem(x, d, n, dist)
+    syst = randomsystem(x, d-1, n, assumption) #d-1 is the polynomial degree
+    #syst = getsystem(x, d, n, dist)
     #solve system and get real solutions
-    real_sols = real_solutions(solve(syst, show_progress=false))
+    real_sols = real_solutions(solve(syst, show_progress=true))
     nsol = length(real_sols)
     #get positive solutions
     pos_sols = filter(s -> all(s .> 0), real_sols)
@@ -191,48 +191,49 @@ function main(n_ds, n_sim, variance, dist, stability, assumption, merge, save_fo
     if stability n_col = 5 else n_col = 4 end
     
     println("Running simulations under "*assumption*" case")
-    #loop over simulations
-    for s in 1:n_sim
-        #loop over order of interactions and diversity pairs (one parameter sweep)
-        for n_d in 1:n_pairs
-            n = n_ds[n_d][1]
-            d = n_ds[n_d][2]+1
-            print("Dimension of HOIs: ")
-            println(d)
-            print("Diversity: ")
-            println(n)
-            #declare dynamic variables
-            @var x[1:n]
-            #preallocate matrix to store results
-            n_eq_mat = zeros(Int64, n_sim, n_col)
-            #loop over simulations for each n
-            println("Simulation number:")  
-                #print progress
-                if s==n_sim println(" ", s) elseif rem(s, 100)==0 print(" ", s)  else end
-                #store results
-                add_rows = one_simulation(d, n, s, x, variance, dist, assumption)
-                n_eq_mat[s,:] = add_rows
-                #if merge is true, add a copy to the merging files
-                if merge
-                    open("../data/growing_file/n_"*string(n)*"_d_"*string(d)*".csv", "a") do io
-                        writedlm(io, add_rows, ' ')
-                    end
+    #loop over order of interactions and diversity pairs
+    for n_d in 1:n_pairs
+        n = n_ds[n_d][1]
+        d = n_ds[n_d][2]+1 #now d is the actual interaction order
+        print("Dimension of HOIs: ")
+        println(d)
+        print("Diversity: ")
+        println(n)
+        #declare dynamic variables
+        @var x[1:n]
+        #preallocate matrix to store results
+        n_eq_mat = zeros(Int64, n_sim, n_col)
+        #loop over simulations for each n
+        println("Simulation number:") 
+        for s in 1:n_sim 
+            #print progress
+            if s==n_sim println(" ", s) elseif rem(s, 100)==0 print(" ", s)  else end
+            #store results
+            add_rows = one_simulation(d, n, s, x, variance, dist, assumption)
+            n_eq_mat[s,:] = add_rows
+            #if merge is true, add a copy to the merging files
+            if merge
+                open("../data/growing_file/n_"*string(n)*"_d_"*string(d)*".csv", "a") do io
+                    writedlm(io, add_rows, ' ')
+                end
+            end
         end
-        #after all simulations have ended, save a copy in the safe directory
-        writedlm("../data/"*save_folder*"/n_"*string(n)*"_d_"*string(d)*".csv", n_eq_mat, ' ')
     end
+    #after all simulations have ended, save a copy in the safe directory
+    writedlm("../data/"*save_folder*"/n_"*string(n)*"_d_"*string(d)*".csv", n_eq_mat, ' ')
 end
+
 
 #set parameters
 #d is the degree of the polynomial
-n_ds = get_n_ds(8, 6, 20000, false) 
-n_sim = 200 #number of simulations
+n_ds = get_n_ds([7], [5], 20000, true) 
+n_sim = 1 #number of simulations
 var = 1
 dist = "normal"
 stability = false
 assumption = "kss"
-save_folder = "test_homogenizing"
-merge = true
+save_folder = "test_memory"
+merge = false
 #run simulations
 main(n_ds, n_sim, var, dist, stability, assumption, merge, save_folder)
 #save data

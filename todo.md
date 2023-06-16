@@ -7,6 +7,7 @@
 - Consider if/where to put plots of histograms of roots, and how to create them in latex. Maybe in a section called: Simulation protocol and results
 - Can we run julia in the cluster?  
 ------------------------------------------------------------------------------------
+- Should I look at what is the profile of the steady state abundances?
 - Investigate other models
 - Why do I not get the more feasibility as increasing number of resources type of behaviour?
 ------------------------------------------------------------------------------------
