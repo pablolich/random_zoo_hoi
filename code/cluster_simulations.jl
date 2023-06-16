@@ -129,7 +129,7 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
             manysweeps_result = [manysweeps_result; sweepresult] 
         end
     end
-    open("../data/sweeps/sweeps"*string(seed)*".csv", "w") do io
+    open("../data/sweeps/n_sweeps_"*string(n_sweeps)*"seed_"*string(seed)*".csv", "w") do io
         writedlm(io, manysweeps_result, ' ')
     end
     return manysweeps_result
