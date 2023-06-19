@@ -114,7 +114,7 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     """
     Perform multiple parameter sweeps
     """
-    parameters = getparameters(3, 3, 80000, false)
+    parameters = getparameters(8, 6, 20000, false)
     #set seed for parameter sweep
     rng = MersenneTwister(seed)
     #initialize matrix for storing results
@@ -122,7 +122,7 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     println("Simulation number:")  
     for sweep in 1:n_sweeps
         if sweep==n_sweeps println(" ", sweep) elseif rem(sweep, 1)==0 print(" ", sweep)  else end
-        sweepresult = parameter_sweep(parameters, rng, false)
+        sweepresult = parameter_sweep(parameters, rng, true)
         if sweep == 1 
             manysweeps_result = sweepresult 
         else

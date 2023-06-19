@@ -1,5 +1,6 @@
 - Bring back the sparsity assumption
 - Run simulations dropping assumptions
+- finish plotting variance of a: calculate symmetric case and plot both
 ------------------------------------------------------------------------------------
 - Check asymptotic formula, AGAIN
 - Write down Chebyshev proof
