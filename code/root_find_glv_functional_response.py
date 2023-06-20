@@ -117,7 +117,7 @@ def main(argv):
         while nsols < nsols_found:
             sample = sampler.random(n=1)
             #scale to bounds
-            x0 = qmc.scale(sample, lb, ub)
+            x0 = qmc.scale(sample, lb, ub)[0]
             res = minimize(fun, x0, args = (r, h, A), 
                     method="Nelder-Mead", tol = 1e-20)
             #only save if its a solution
