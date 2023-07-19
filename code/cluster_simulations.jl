@@ -104,7 +104,8 @@ function rand_poly_dist(T,
 end
 
 function getsystem(variables::AbstractVector{Variable}, 
-    d::Int64, n::Int64, rng::AbstractRNG, fromtensor::Bool)
+    d::Int64, n::Int64, rng::AbstractRNG, fromtensor::Bool, 
+    distribution::String)
     """
     Build system of polynomials
     """
@@ -126,7 +127,7 @@ function getsystem(variables::AbstractVector{Variable},
     #build system from polynomial coefficients directly
     else
         for i in 1:n
-            append!(equations, rand_poly_dist(Float16, vars, d, assumption))
+            append!(equations, rand_poly_dist(Float16, vars, d, distribution, assumption))
         end
     end
     System(equations)
@@ -146,7 +147,8 @@ function getparameters(max_n, max_d,
     end
 end
 
-function parameter_sweep(parameters, rng::AbstractRNG, save_rows)
+function parameter_sweep(parameters, rng::AbstractRNG, save_rows::Bool, 
+    distribution::String) #feed directly a distribution?
     """
     Perform one sweep over all parameter
     """
@@ -159,7 +161,7 @@ function parameter_sweep(parameters, rng::AbstractRNG, save_rows)
         #declare dynamic variables
         @var x[1:n]
         #create and solve system
-        syst = getsystem(x, d, n, rng)
+        syst = getsystem(x, d, n, rng, true, distribution) #fromtensor = true
         #solve system and get real solutions
         real_sols = real_solutions(solve(syst, show_progress=true))
         #get number of real and positive solutions
@@ -188,7 +190,11 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     """
     Perform multiple parameter sweeps
     """
+    #set distribution from which to sample
+    distribution = "normal"
+    #form parameter pairs
     parameters = getparameters(8, 6, 20000, false)
+    #parameters = getparameters(2,2,300,false) #small trial  
     #set seed for parameter sweep
     rng = MersenneTwister(seed)
     #initialize matrix for storing results
@@ -196,7 +202,7 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     println("Simulation number:")  
     for sweep in 1:n_sweeps
         if sweep==n_sweeps println(" ", sweep) elseif rem(sweep, 1)==0 print(" ", sweep)  else end
-        sweepresult = parameter_sweep(parameters, rng, true)
+        sweepresult = parameter_sweep(parameters, rng, true, distribution)
         if sweep == 1 
             manysweeps_result = sweepresult 
         else

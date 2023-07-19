@@ -1,20 +1,26 @@
-- Bring back the sparsity assumption
-- Run simulations dropping assumptions
-- finish plotting variance of a: calculate symmetric case and plot both
 ------------------------------------------------------------------------------------
+#MAIN PRIORITY
+
+- test latest additions to cluster code
+- Write code to save equilibria and stability for each d, n
+- cr with functional response
+- Run simulations dropping assumptions
+------------------------------------------------------------------------------------
+#SECONDARY PRIORITY
+
 - Check asymptotic formula, AGAIN
 - Write down Chebyshev proof
-- Make plots of variances of coefficients
 - Consider if/where to put plots of histograms of roots, and how to create them in latex. Maybe in a section called: Simulation protocol and results
-- Can we run julia in the cluster?  
 ------------------------------------------------------------------------------------
+#BACKGROUND NOISE
+
 - Should I look at what is the profile of the steady state abundances?
-- Investigate other models
-- Why do I not get the more feasibility as increasing number of resources type of behaviour?
-------------------------------------------------------------------------------------
+- Save data on stability?
 - Comment latex code
-- add 1/2 contour line to the heatmap plot
 - Explain the 1/2^n that seems to be obvious to mathematicians should we email duong?
 -----------------------------------------------------------------------------------
+#QUESTIONS
+
 - Write paper introduction
+- Bring back the sparsity assumption?
 

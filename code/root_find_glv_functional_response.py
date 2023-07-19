@@ -7,55 +7,19 @@ __version__ = '0.0.1'
 ## IMPORTS ##
 
 import sys
+#minimize all components of fun_vec over different x, first withouth inputing
 import numpy as np
 import pandas as pd
-from scipy.optimize import minimize
+from scipy.optimize import fsolve
 from scipy.stats import qmc
+import time
 
 ## CONSTANTS ##
 
 
-## FUNCTIONS ##
+## FUNCTIONS ## 
 
-def polynomial_form(x, r, h, A):
-    nspp = len(x)
-    fun_vec = np.zeros(nspp)
-    for i in range(nspp):
-        #create vector of functional response
-        vec_func = 1+h*x
-        #eliminate ith component from vector and take the product
-        vec_func_jnoti = np.copy(vec_func)
-        vec_func_jnoti[i] = 1
-        prod_jnoti = np.prod(vec_func_jnoti)
-        #preallocate interspecific competition term
-        inter_comp = np.zeros(nspp)
-        for j in range(nspp):
-            if j == i:
-                inter_comp[j] = 0
-            else:
-                #eliminate jth component from vector and take the product
-                vec_func_knotj = np.copy(vec_func_jnoti)
-                vec_func_knotj[j] = 1
-                prod_knotj = np.prod(vec_func_knotj)
-                #build component j
-                inter_comp[j] = A[i,j]*x[j]*prod_knotj
-        tot_inter_comp_i = sum(inter_comp)
-        fun_vec[i] = r[i]*prod_jnoti - A[i,i]*x[i]*prod_jnoti - tot_inter_comp_i
-    return fun_vec
-
-##############################################################################
-#test function: it works for at most 3 spp
-#nspp = 2
-#r = np.array([1/2, 2, 1/3])
-#h = np.array([1,2,1])
-#A = np.array([[2, 1, 1], [1,2, 1], [1, 1, 2]])
-##equilibrium of this model is easy to compute in mathematica:
-#x_star_analytically = np.array([0.110015,0.975757, -0.0481869])
-#fun_value_test = fun(x_star_analytically, r, h, A)
-#print(fun_value_test) #it should be close to 0
-##############################################################################
-
-def classic_form(x, r, h, A):
+def glv_functional_response(x, r, h, A):
     nspp = len(x)
     func_vec = np.zeros(nspp)
     for i in range(nspp):
@@ -68,71 +32,159 @@ def classic_form(x, r, h, A):
         func_vec[i] = r[i] - A[i,i] * x[i] - sum(inter_term)
     return func_vec
 
-##############################################################################
-#test function: it works for at most 3 spp
-#r = np.array([1/2, 2, 1/3])
-#h = np.array([1,2,1])
-#A = np.array([[2, 1, 1], [1,2, 1], [1, 1, 2]])
-##equilibrium of this model is easy to compute in mathematica:
-#x_star_analytically = np.array([-1.61555, -1.83414, -1.4893])
-#fun_value_test = classic_form(x_star_analytically, r, h, A)
-#print(fun_value_test) #it should be close to 0
-#import ipdb; ipdb.set_trace(context = 20)
-##############################################################################
+def jac_glv_functional_response(x, r, h, A):
+    nspp = len(x)
+    J = np.zeros((nspp, nspp))
+    for i in range(nspp):
+        for j in range(nspp):
+            if i==j:
+                J[i,i] = -A[i, i]
+            else:
+                J[i,j] = -A[i,j]/(1+h[j]*x[j])**2
+    return J
 
-def fun(x, r, h, A):
-    return sum(abs(classic_form(x, r, h, A)))
+def glv_functional_response_bi(x, r, h, A, B):
+    return 0
 
+def glv_functional_response_constr(x, r, h, A):
+    nspp = len(x)
+    func_vec = np.zeros(nspp)
+    for i in range(nspp):
+        inter_term = np.zeros(nspp)
+        for j in range(nspp):
+            if j==i:
+                inter_term[j] = 0
+            else:
+                ho = np.delete(h, i)
+                xo = np.delete(x, i)
+                inter_term[j] = A[i, j] * x[j]/(1+np.dot(ho, xo))
+        func_vec[i] = r[i] - A[i,i] * x[i] + sum(inter_term)
+    return func_vec
 
-#minimize all components of fun_vec over different x, first withouth inputing
+def jac_glv_functional_response_constr(x, r, h, A):
+    nspp = len(x)
+    J = np.zeros((nspp, nspp))
+    for i in range(nspp):
+        ho = np.delete(h, i)
+        xo = np.delete(x, i)
+        for j in range(nspp):
+            if i==j:
+                J[i,i] = -A[i, i]
+            else:
+                hoo = np.delete(h, [i,j])
+                xoo = np.delete(x, [i,j])
+                J[i,j] = +A[i,j]*(1+np.dot(hoo, xoo))/(1+np.dot(ho, xo))**2
+    return J
+
+#test
+#nsims = 10
+#s = 0
+#t_no_jac = np.zeros(nsims)
+#t_jac = np.zeros(nsims)
+#nspp = 10
+#while s < nsims:
+#    x0 = np.random.rand(nspp)
+#    r = np.random.rand(nspp)
+#    h = np.random.rand(nspp)
+#    A = np.random.rand(nspp, nspp) 
+#    #find root without jacobian
+#    start = time.time()
+#    res = fsolve(glv_functional_response_constr, x0, \
+#            args = (r, h, A))
+#    end = time.time()
+#    t_no_jac[s] = end-start
+#    #find root with jacobian
+#    start = time.time()
+#    resjac = fsolve(glv_functional_response_constr, x0, \
+#            args = (r, h, A),
+#            fprime=jac_glv_functional_response_constr)
+#    end = time.time()
+#    t_jac[s] = end-start
+#    #check that answers match
+#    print("Simulation  number ", s, end = "\r")
+#    s+=1
+#
+#print("time without jacobian ", np.mean(t_no_jac))
+#print("time with jacobian ", np.mean(t_jac))
+
+def store_if_unique(stored, tostore):
+    nrow = stored.shape[0]
+    comparison_vec = np.zeros(nrow)
+    #compare tostore with each row of stored
+    comparison_vec = [all(stored[i,:] == tostore) for i in range(nrow)]
+    #not add if already there
+    if (nrow == 0 or not any(comparison_vec)):
+        return np.vstack((stored, tostore))
+    else:
+        return stored
+
 #the gradient
 
-#sample x0
-
 def main(argv):
-    '''Main function'''
+    '''main function'''
     #set random seed
     np.random.seed(2)
     #max diversity
-    nmax = 5
+    nmax = 15
     #how many solutions to find
-    nsols_found = 50
-    #preallocate results
-    neq_results = np.zeros((nmax, 2))
+    nsols_found = int(1e4)
+    #how many simulations to carry for each diversity
+    nsim = 1000
+    #how many trials for each simulation
+    ntrialsmax=2*nsols_found
+    #preallocate space for number of equlibria for each diversity
+    neq_results = np.zeros((0, 3))
     for i in range(nmax):
-        nspp = i+1
-        print("Diversity: ", nspp)
-        nsols = 0
-        #sample parameters of system
-        r = np.random.rand(nspp)
-        h = np.random.rand(nspp)
-        A = np.random.rand(nspp, nspp)
-        #sample many initial conditions
-        sampler = qmc.LatinHypercube(d = nspp)
-        results = np.zeros((nsols_found, nspp))
-        #sampling bounds
-        lb = nspp*[-1e6]
-        ub = nspp*[1e6]
-        #keep minimizing until 1000 solutions are found
-        while nsols < nsols_found:
-            sample = sampler.random(n=1)
-            #scale to bounds
-            x0 = qmc.scale(sample, lb, ub)[0]
-            res = minimize(fun, x0, args = (r, h, A), 
-                    method="Nelder-Mead", tol = 1e-20)
-            #only save if its a solution
-            if res.fun == 0:
-                results[nsols,:] = res.x
-                nsols += 1
-                print("Number of equilibria found ", nsols)
-        #get unique equilibria
-        unique_eq = np.unique(results, axis = 0)
-        #count how many
-        neq = unique_eq.shape[0]
-        #add to neq_results
-        neq_results[i, 0] = nspp
-        neq_results[i, 1] = neq
-    import ipdb; ipdb.set_trace(context = 20)
+        for s in range(nsim):
+            #initialize storing matrix for actual unique equilibria
+            eq_results = np.zeros((0, nmax+2))
+            nspp = i+1
+            nsols = 0
+            #sample parameters of system
+            r = np.ones(nspp)
+            h = np.random.rand(nspp)
+            Au = np.random.rand(nspp, nspp) #+ np.identity(nspp)
+            A = 0.5*(Au + Au.T)
+            ntrials = 0
+            #keep finding roots until nsols_found are found
+            while nsols < nsols_found:
+                x0 = np.random.normal(scale = 1e6, size = nspp)
+                res = fsolve(glv_functional_response, x0, \
+                        args = (r, h, A),
+                        fprime=jac_glv_functional_response)
+                res_rounded = np.round(res, decimals = 2)
+                #store if its an actual solution
+                if sum(abs(glv_functional_response(res, r, h, A))) < 1e-6:
+                    #complete res with trailing zeros to store
+                    res_expand = np.hstack((s, nspp, res_rounded, 
+                        np.zeros(nmax-nspp)))
+                    eq_results = store_if_unique(eq_results, res_expand)
+                    nsols += 1
+                #break out of the while loop after enough trials 
+                ntrials += 1
+                print("diverstiy: ", nspp,  
+                        "simulation: ", s, 
+                        "trials: ", ntrials, end = "\r")
+                if (ntrials == nsols_found and nsols == 0) or \
+                        (ntrials > ntrialsmax):
+                    break
+            nsol = eq_results.shape[0]
+            npos = sum([all(eq_results[i,2:nspp]>0) for i in range(nsol)])
+            if npos == 0:
+               np.savetxt("../data/no_feas/Asymm_nspp_"+str(nspp)+"sim"+str(s)+".csv",
+                       A, delimiter = ",")
+               np.savetxt("../data/no_feas/hsymm_nspp_"+str(nspp)+"sim"+str(s)+".csv",
+                       h, delimiter = ",")
+            else:
+               np.savetxt("../data/feas/Asymm_nspp_"+str(nspp)+"sim"+str(s)+".csv",
+                       A, delimiter = ",")
+               np.savetxt("../data/feas/hsymm_nspp_"+str(nspp)+"sim"+str(s)+".csv",
+                       h, delimiter = ",")
+            add_row = np.array([nspp, nsol, npos])
+            neq_results = np.vstack((neq_results, add_row))
+            #create dataframe and save
+            df = pd.DataFrame(neq_results, columns = ["n", "nsol", "npos"])
+            df.to_csv("../data/neq_glv_func_resp_symm.csv", index = False)
     return 0
 
 ## CODE ##
@@ -140,5 +192,3 @@ def main(argv):
 if (__name__ == '__main__'):
     status = main(sys.argv)
     sys.exit(status)
-     
-

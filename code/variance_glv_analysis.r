@@ -104,7 +104,7 @@ for (h in seq(0, degree)){
         h = h,
         var = variance_as_kss(h, as.numeric(lvec_i))
       ))
-      variance_a_kss = rbind(variance_a_symmetric, tibble(
+      variance_a_symmetric = rbind(variance_a_symmetric, tibble(
         p = l_i,
         h = h,
         var = variance_as_symmetric(as.numeric(lvec_i))
@@ -119,3 +119,8 @@ write.table(variance_df, '../data/variance_structure.dat', sep = " ", row.names 
 
 write.table(variance_a_kss, '../data/variance_a_kss.dat', sep = " ", row.names = F,
             quote = F)
+
+write.table(variance_a_symmetric, '../data/variance_a_symmetric.dat', sep = " ", row.names = F,
+            quote = F)
+
+
