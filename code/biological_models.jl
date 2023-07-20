@@ -30,17 +30,16 @@ function buildglvpoly(x::Array, A::Array, H::Array)
     nspp = length(x)
     res = []
     for i in 1:nspp
-        terms = zeros(nspp)
+        terms = []
         Hrowi = H[i,:]
         factors = 1 .+ Hrowi.*x
         factors[i] = 1
         for j in 1:nspp
             if j != i
-                factors[j] = 1
-                terms[j] = A[i,j]*x[j]*prod(factors)
+                append!(terms, A[i,j]*x[j]*prod(factors)/(1+H[i,j]*x[j]))
             end
-        append!(res, prod(factors)*(1 - A[i,i]*x[i]) - sum(terms))
         end
+        append!(res, prod(factors)*(1 - A[i,i]*x[i]) - sum(terms))
     end
     return res
 end
@@ -62,13 +61,16 @@ end
 function onesweep(nspp_vec)
     for i in nspp_vec
         #generate parameters
-        A = rand(Float64, (i, i))
-        H = rand(Float64, (i, i))
+        #A = rand(Float64, (i, i))
+        #H = rand(Float64, (i, i))
+        A = ones(i,i)
+        H = ones(i,i)
         @var x[1:i]
         #build system
         syst = System(buildglvpoly(x, A, H))
         #solve system and get real solutions
         real_sols = real_solutions(solve(syst, show_progress=true))
+        println(real_sols)
         #check if equilibria satisfy original model
         cert_vec = certifysolutions(evaluateglv, real_sols, x, A, H)
         cert_real_sols = real_sols[cert_vec, :]
@@ -92,7 +94,7 @@ function manysweeps(nspp_vec, nsim)
     end
 end
 
-manysweeps([1,2,3,4,5], 2)
+manysweeps([3], 2)
 
 #Plant an equilibrium
 
