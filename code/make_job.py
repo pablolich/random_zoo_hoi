@@ -9,7 +9,8 @@ n_seeds = int(sys.argv[2])
 
 for i in range(n_seeds):
     #write name of file including number of sweeps and used seed
-    fname = "sweeps_"+str(n_sweeps)+"_seed_"+str(i+1)+".sh"
+    import ipdb; ipdb.set_trace(context = 20)
+    fname = "sweeps_"+str(n_sweeps)+"_seed_"+str(i+1)+".sbatch"
     #create bash file
     os.system("touch "+fname)
     #write common text to file
@@ -18,6 +19,6 @@ for i in range(n_seeds):
     line = "\"\njulia cluster_simulations.jl "+str(n_sweeps)+" "+str(i+1)+"\""
     os.system("echo "+line+">>"+fname)
     #call file from terminal
-    os.system("bash "+fname)
+    os.system("sbatch "+fname)
     #wait 2 seconds before sending next job
     time.sleep(2)

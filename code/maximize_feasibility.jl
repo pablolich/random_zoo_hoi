@@ -1,7 +1,6 @@
+using Optimization, ForwardDiff, Zygote, OptimizationOptimJL #optimization packages
 using Random #to sample random tensors
 using HomotopyContinuation #to solve systems of polynomials numerically
-using LinearAlgebra #to take matrix products
-using DelimitedFiles #to load and save files
 
 function evaluateglv(x::Array, A::Array, H::Array)
     """
@@ -65,44 +64,47 @@ function certifysolutions(model, solutions, A, H)
     return cert_vec
 end
 
-function onesweep(nspp_vec)
-    for i in nspp_vec
-        #generate parameters
-        A = rand(Float64, (i, i))
-        #H = rand(Float64, (i, i))
-        #A = ones(i,i)
-        H = ones(i,i)
-        @var x[1:i]
-        #build system
-        syst = System(buildglvpoly(x, A, H))
-        #solve system and get real solutions
-        real_sols = real_solutions(solve(syst, show_progress=true))
-        #check if equilibria satisfy original model
-        cert_vec = certifysolutions(evaluateglv, real_sols, A, H)
-        cert_real_sols = real_sols[cert_vec, :]
-        #get number of real and positive solutions
-        nsol = length(cert_real_sols)
-        pos_sols = filter(s -> all(s .> 0), cert_real_sols)
-        npos = length(pos_sols)
-        add_rows = [i nsol npos]
-        #save sweep
-        open("../data/parameter_sweeps_glvfunc.csv", "a") do io
-            writedlm(io, add_rows, ' ')
-        end    
-    end
+mutable struct Parameters
+    next_id::UInt64
+    ids::Vector{UInt64}
+
+    abundance::Vector{UInt64}
+    total_abundance::UInt64
+
+    spacers::Vector{Vector{UInt64}}
+    growthalleles::Vector{Float64}
+    growthrates::Vector{Float64}
 end
 
-function manysweeps(nspp_vec, nsim)
-    s=0
-    while s < nsim
-        onesweep(nspp_vec)
-        s+=1
+function addnegatives(x, variables)
+    """
+    function to add up the negative components of solutions of system
+    """
+    nspp = length(variables)
+    #generate parameters
+    A = reshape(x, (nspp, nspp))
+    H = ones(i,i)
+    #build system
+    syst = System(buildglvpoly(variables, A, H))
+    #solve system and get real solutions
+    real_sols = real_solutions(solve(syst, show_progress=true))
+    #check if equilibria satisfy original model
+    cert_vec = certifysolutions(evaluateglv, real_sols, A, H)
+    cert_real_sols = real_sols[cert_vec, :]
+    #get number of real solutions
+    nsol = length(cert_real_sols)
+    cost = 0
+    for sol in 1:nsol
+        sol_i = cert_real_sols[sol]
+        neg_comp = abs(sum(cert_real_sols[cert_real_sols.<0]))
+        cost += neg_comp
     end
+    return cost
 end
 
-manysweeps([1, 2, 3, 4, 5], 100)
-
-#Plant an equilibrium
-
-#Come up with parameters that minimize negative solutions and see if I maintain number of 
-#real
+n = 2
+x0 = ones(n^2)
+@var x[1:n]
+f = OptimizationFunction(addnegatives, Optimization.AutoForwardDiff())
+prob = OptimizationProblem(f, x0, x)
+sol = solve(prob, NelderMead())
