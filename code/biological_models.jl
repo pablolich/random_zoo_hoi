@@ -3,7 +3,7 @@ using HomotopyContinuation #to solve systems of polynomials numerically
 using LinearAlgebra #to take matrix products
 using DelimitedFiles #to load and save files
 
-function evaluateglv(x::Array, A::Array, H::Array)
+function evaluateglv(x::Array, A::Array, B::Array, r::Array, h::Array, e::Array)
     """
     function to evaluate original model
     """
@@ -15,15 +15,16 @@ function evaluateglv(x::Array, A::Array, H::Array)
             if j == i
                 append!(response, 0)
             else 
-                append!(response, A[i,j]*x[j]/(1+H[i,j]*x[j]))
+                append!(response, A[i,j]*x[j]/(h[j]+x[j]) - 
+                B[j,i]*x[j]/(e[i] + x[i]))
             end
         end
-        append!(res, 1 - A[i,i]*x[i] - sum(response))
+        append!(res, r[i] - A[i,i]*x[i] + sum(response))
     end
     return res
 end
 
-function buildglvpoly(x::Array, A::Array, H::Array)
+function buildglvpoly(x::Array, A::Array, B::Array, r::Array, h::Array, e::Array)
     """
     function to build polynomial form of the model
     """
@@ -31,12 +32,12 @@ function buildglvpoly(x::Array, A::Array, H::Array)
     res = []
     for i in 1:nspp
         terms = []
-        Hrowi = H[i,:]
-        factors = 1 .+ Hrowi.*x
+        factors = h + x
         factors[i] = 1
         for j in 1:nspp
             if j != i
-                append!(terms, A[i,j]*x[j]*prod(factors)/(1+H[i,j]*x[j]))
+                append!(terms, A[i,j]*x[j]*(e[i]+x[i])*prod(factors)/(h[j]+x[j])-
+                prod(factors)*B[j,i]*x[j])
             end
             #try/catch to handle the particularly annoying case of one species
             try
@@ -47,17 +48,17 @@ function buildglvpoly(x::Array, A::Array, H::Array)
             catch
             end
         end
-        append!(res, prod(factors)*(1 - A[i,i]*x[i]) - sum(terms))
+        append!(res, (e[i]+x[i])*prod(factors)*(r[i] - A[i,i]*x[i]) + sum(terms))
     end
     return res
 end
 
-function certifysolutions(model, solutions, A, H)
+function certifysolutions(model, solutions, A, B, r, h, e)
     nsol = size(solutions, 1)
     cert_vec = []
     tol = 1e-6
     for i in 1:nsol
-        res = model(solutions[i], A, H)
+        res = model(solutions[i], A, B, r, h, e)
         if all(abs.(res) .< tol)
             push!(cert_vec, i)
         end
@@ -68,17 +69,24 @@ end
 function onesweep(nspp_vec)
     for i in nspp_vec
         #generate parameters
-        A = rand(Float64, (i, i))
-        #H = rand(Float64, (i, i))
-        #A = ones(i,i)
-        H = ones(i,i)
+        A = 0.6*ones((i,i)) .+ 0.01*rand((i, i))
+        B = 0.2*ones((i, i)).+ 0.005*rand((i, i))
+        r = 0.3*ones(i) + 0.01*rand(i)
+        h = 0.3*ones(i) + 0.01*rand(i)
+        e = 0.3*ones(i) + 0.01*rand(i)
+        for k in 1:i A[k,k] = 0.01 end
+        #A = rand(Float64, (i, i))
+        #B = rand(Float64, (i, i))
+        #r = rand(Float64, i)
+        #h = rand(Float64, i)
+        #e = rand(Float64, i)
         @var x[1:i]
         #build system
-        syst = System(buildglvpoly(x, A, H))
+        syst = System(buildglvpoly(x, A, B, r, h, e))
         #solve system and get real solutions
         real_sols = real_solutions(solve(syst, show_progress=true))
         #check if equilibria satisfy original model
-        cert_vec = certifysolutions(evaluateglv, real_sols, A, H)
+        cert_vec = certifysolutions(evaluateglv, real_sols, A, B, r, h, e)
         cert_real_sols = real_sols[cert_vec, :]
         #get number of real and positive solutions
         nsol = length(cert_real_sols)
@@ -100,9 +108,4 @@ function manysweeps(nspp_vec, nsim)
     end
 end
 
-manysweeps([1, 2, 3, 4, 5], 100)
-
-#Plant an equilibrium
-
-#Come up with parameters that minimize negative solutions and see if I maintain number of 
-#real
+manysweeps([1, 2, 3, 4, 5, 6, 7, 8], 100)

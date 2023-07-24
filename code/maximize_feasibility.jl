@@ -1,8 +1,8 @@
-using Optimization, ForwardDiff, Zygote, OptimizationOptimJL #optimization packages
+# using Optimization, ForwardDiff, Zygote, OptimizationOptimJL #optimization packages
 using Random #to sample random tensors
 using HomotopyContinuation #to solve systems of polynomials numerically
 
-function evaluateglv(x::Array, A::Array, H::Array)
+function evaluateglv(x::Array, A::Array, B::Array, r::Array, h::Array, e::Array)
     """
     function to evaluate original model
     """
@@ -14,15 +14,16 @@ function evaluateglv(x::Array, A::Array, H::Array)
             if j == i
                 append!(response, 0)
             else 
-                append!(response, A[i,j]*x[j]/(1+H[i,j]*x[j]))
+                append!(response, A[i,j]*x[j]/(h[j]+x[j]) - 
+                B[j,i]*x[j]/(e[i] + x[i]))
             end
         end
-        append!(res, 1 - A[i,i]*x[i] - sum(response))
+        append!(res, r[i] - A[i,i]*x[i] + sum(response))
     end
     return res
 end
 
-function buildglvpoly(x::Array, A::Array, H::Array)
+function buildglvpoly(x::Array, A::Array, B::Array, r::Array, h::Array, e::Array)
     """
     function to build polynomial form of the model
     """
@@ -30,12 +31,12 @@ function buildglvpoly(x::Array, A::Array, H::Array)
     res = []
     for i in 1:nspp
         terms = []
-        Hrowi = H[i,:]
-        factors = 1 .+ Hrowi.*x
+        factors = h .+ x
         factors[i] = 1
         for j in 1:nspp
             if j != i
-                append!(terms, A[i,j]*x[j]*prod(factors)/(1+H[i,j]*x[j]))
+                append!(terms, A[i,j]*x[j]*(e[i]+x[i])*prod(factors)/(h[j]+x[j])-
+                prod(factors)*B[j,i]*x[j])
             end
             #try/catch to handle the particularly annoying case of one species
             try
@@ -46,7 +47,7 @@ function buildglvpoly(x::Array, A::Array, H::Array)
             catch
             end
         end
-        append!(res, prod(factors)*(1 - A[i,i]*x[i]) - sum(terms))
+        append!(res, (e[i]+x[i])*prod(factors)*(r[i] - A[i,i]*x[i]) + sum(terms))
     end
     return res
 end
@@ -64,18 +65,6 @@ function certifysolutions(model, solutions, A, H)
     return cert_vec
 end
 
-mutable struct Parameters
-    next_id::UInt64
-    ids::Vector{UInt64}
-
-    abundance::Vector{UInt64}
-    total_abundance::UInt64
-
-    spacers::Vector{Vector{UInt64}}
-    growthalleles::Vector{Float64}
-    growthrates::Vector{Float64}
-end
-
 function addnegatives(x, variables)
     """
     function to add up the negative components of solutions of system
@@ -83,7 +72,7 @@ function addnegatives(x, variables)
     nspp = length(variables)
     #generate parameters
     A = reshape(x, (nspp, nspp))
-    H = ones(i,i)
+    H = ones(nspp, nspp)
     #build system
     syst = System(buildglvpoly(variables, A, H))
     #solve system and get real solutions
@@ -96,15 +85,27 @@ function addnegatives(x, variables)
     cost = 0
     for sol in 1:nsol
         sol_i = cert_real_sols[sol]
-        neg_comp = abs(sum(cert_real_sols[cert_real_sols.<0]))
+        neg_comp = abs(sum(sol_i[sol_i.<0]))
         cost += neg_comp
+        println(cost)
     end
+    println("cost ", cost)
     return cost
 end
 
-n = 2
+n = 4
 x0 = ones(n^2)
 @var x[1:n]
 f = OptimizationFunction(addnegatives, Optimization.AutoForwardDiff())
 prob = OptimizationProblem(f, x0, x)
-sol = solve(prob, NelderMead())
+sol = Optimization.solve(prob, SimulatedAnnealing())
+A = reshape(sol.u, (n, n))
+H = ones(n, n)
+#build system
+syst = System(buildglvpoly(x, A, H))
+#solve system and get real solutions
+real_sols = real_solutions(HomotopyContinuation.solve(syst, show_progress=true))
+#check if equilibria satisfy original model
+cert_vec = certifysolutions(evaluateglv, real_sols, A, H)
+cert_real_sols = real_sols[cert_vec, :]
+println(cert_real_sols)
