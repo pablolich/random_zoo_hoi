@@ -108,4 +108,4 @@ function manysweeps(nspp_vec, nsim)
     end
 end
 
-manysweeps([1, 2, 3, 4, 5, 6, 7, 8], 100)
+manysweeps([1, 2, 3, 4, 5, 6], 100)
