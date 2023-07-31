@@ -193,8 +193,7 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     #set distribution from which to sample
     distribution = "normal"
     #form parameter pairs
-    parameters = getparameters(8, 6, 80000, false)
-    #parameters = getparameters(2,2,300,false) #small trial  
+    parameters = getparameters(8, 6, 20000, false)
     #set seed for parameter sweep
     rng = MersenneTwister(seed)
     #initialize matrix for storing results
@@ -215,5 +214,5 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     return manysweeps_result
 end
 
-#manysweeps(1, 1) #n_sweeps, seed  
-@time manysweeps(parse(Int, ARGS[1]), parse(Int, ARGS[2]))
+manysweeps(800, 2) #n_sweeps, seed  
+#@time manysweeps(parse(Int, ARGS[1]), parse(Int, ARGS[2]))
