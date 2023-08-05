@@ -155,6 +155,34 @@ function buildcirculant(first_row)
     return C' #transpose it
 end
 
+function nonunique(x::AbstractArray{T}) where T
+    xs = sort(x)
+    duplicatedvector = T[]
+    for i=2:length(xs)
+        if (isequal(xs[i],xs[i-1]) && (length(duplicatedvector)==0 || !isequal(duplicatedvector[end], xs[i])))
+            push!(duplicatedvector,xs[i])
+        end
+    end
+    duplicatedvector
+end
+
+function getrepeatedeigs(eigenvalues)
+    #evaluate eigenvalues numerically
+    numeric_eigenvals = Vector{Float64}([])
+    n_eigenvals = length(eigenvalues)
+    for i in 1:n_eigenvals
+        push!(numeric_eigenvals, Float64(real(substitute(eigs[i], Dict([a=>pi]))).val))
+    end
+    rounded_eigs = round.(numeric_eigenvals, digits = 3)
+    rep_eigenvalues = nonunique(rounded_eigs)
+    indices = findall(x->in(x, rep_eigenvalues), unique(rounded_eigs))
+    return numeric_eigenvals[indices]
+end
+
+function findcritical(lambda)
+    
+end
+
 #functions dealing with analytical calculations
 
 function symmetricequilibrium(n_neighbor)
@@ -177,7 +205,6 @@ function jaceigenvals(c, n, n_neighbor)
         roots = 0
         for j in sumind
             roots += (rootsofunity(n))^((i-1)*j)
-            println(rootsofunity(n)^((i-1)*j))
         end
         push!(eigs, -1 + c*roots)
     end
