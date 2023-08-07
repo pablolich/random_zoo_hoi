@@ -180,12 +180,29 @@ function getrepeatedeigs(eigenvalues)
     return eigenvalues[indices]
 end
 
-function symbtofloat(symbolicexpression, symbolicvariable, numericvalue)
-    return substitute(symbolicexpression, Dict([symbolicvariable=>numericvalue])).val
-end
-function findcritical(lambda, variable)
-    findzero()
-    symbtofloat(lambda, variable, )
+function findcritical(lambda, parameter)
+    #get real par
+    real_lambda = real(lambda)
+    #build function
+    f_expr = build_function(real_lambda, parameter, expression=Val{false})
+    f = eval(f_expr)
+    critical_par = nothing
+    try
+        critical_par = find_zero(f, 1)
+        return critical_par
+    catch 
+        return critical_par
+    end
+end 
+
+function criticalparameters(eigenvalues, parameter)
+    criticalpars = []
+    n = length(eigenvalues)
+    for i in 1:n
+        eig = eigenvalues[i]
+        push!(criticalpars, findcritical(eig, parameter))
+    end
+    return criticalpars[findall(!isnothing, criticalpars)]
 end
 
 #functions dealing with analytical calculations
@@ -205,13 +222,19 @@ end
 
 function jaceigenvals(c, n, n_neighbor)
     eigs = []
-    sumind = interactionstructure(n, n_neighbor).-1
-    for i in 1:n
+    sumind = interactionstructure(n, n_neighbor)
+    for j in 0:(n-1)
         roots = 0
-        for j in sumind
-            roots += (rootsofunity(n))^((i-1)*j)
+        for i in sumind
+            roots += (rootsofunity(n))^(j*(i-1))
         end
         push!(eigs, -1 + c*roots)
     end
     return eigs
+end
+
+#write main function
+
+function main()
+    return
 end
