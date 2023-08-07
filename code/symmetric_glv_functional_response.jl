@@ -3,6 +3,7 @@ using HomotopyContinuation #to solve systems of polynomials numerically
 using LinearAlgebra #to take matrix products
 using DelimitedFiles #to load and save files
 using Symbolics #perform analytical calculations
+using Roots
 
 function evaluateglv(x::Array, A, r::Array)
     """
@@ -176,11 +177,15 @@ function getrepeatedeigs(eigenvalues)
     rounded_eigs = round.(numeric_eigenvals, digits = 3)
     rep_eigenvalues = nonunique(rounded_eigs)
     indices = findall(x->in(x, rep_eigenvalues), unique(rounded_eigs))
-    return numeric_eigenvals[indices]
+    return eigenvalues[indices]
 end
 
-function findcritical(lambda)
-    
+function symbtofloat(symbolicexpression, symbolicvariable, numericvalue)
+    return substitute(symbolicexpression, Dict([symbolicvariable=>numericvalue])).val
+end
+function findcritical(lambda, variable)
+    findzero()
+    symbtofloat(lambda, variable, )
 end
 
 #functions dealing with analytical calculations
