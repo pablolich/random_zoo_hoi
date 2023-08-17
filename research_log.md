@@ -44,3 +44,23 @@ find a way of, given r, A, B, ..., convert to a polynomial in julia
 #### Jul 20,2023
 
 figure out why certifysolutions is not working properly (case of i = 3)
+
+#### Aug 16,2023
+
+    Plan for new set of simulations: 
+    1. Calculate jacobian of system
+    2. Evaluate at all feasible equilibria
+    3. Get dominant eigenvalue
+    4. If its negative, classify as stable
+    4. Save equilibria
+    5. If its possitive, run dynamics and record the equilibrium that system reaches. 
+    6. Trim the system, and calculate all feasible equilibria there, and thier local stability
+    7. Save equilibria
+    8. Save all parameters used as files capable to be loaded again
+
+    There are then three type of files: 
+    1. Summary statistics: n, d, nsol, npos
+    2. equilibria values: n, d, eq1, domeig1
+    		          n, d, eq2, domeig2
+			  ...
+    3. parameter values: save big tensor as a julia file, with seed name, to be able to load again

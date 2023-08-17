@@ -2,7 +2,7 @@ library(RColorBrewer)
 
 nsim = 1000
 nsppmax = 15
-#dev.off()
+dev.off()
 
 for (nspp in seq(2,nsppmax)){
   #initialize matrix A
@@ -34,11 +34,11 @@ for (nspp in seq(2,nsppmax)){
       
     }
     else if(file.exists(path_nofeas_A)){
-      A = read.csv(path_nofeas, header = F)
+      A = read.csv(path_nofeas_A, header = F)
       Anofeas = Anofeas + A
       Arand = Arand + A
       h = read.csv(path_nofeas_h, header = F)
-      hnofeas = h_nofeas + h
+      hnofeas = hnofeas + h
       hrand = hrand + h
       nnofeas = nnofeas + 1
     }
@@ -86,16 +86,13 @@ for (nspp in seq(2,nsppmax)){
     image(Anofeasmean,main = "Not feasible", 
             col= colorRampPalette(brewer.pal(8, "Blues"))(25), 
           asp = 1)
-    # 
-    # par(mfrow = c(3,1))
-    # image(hfeasmean, main = "Feasible", 
-    #       col= colorRampPalette(brewer.pal(8, "Blues"))(25),
-    #       asp = 1)
-    # image(hrandmean, main = "Random", 
-    #       col= colorRampPalette(brewer.pal(8, "Blues"))(25),
-    #       asp = 1)
-    # image(hnofeasmean, main = "Not feasible", 
-    #       col= colorRampPalette(brewer.pal(8, "Blues"))(25), 
-    #       asp = 1)
+
+    par(mfrow = c(3,1))
+    image(hfeasmean, main = "Feasible",
+          col= colorRampPalette(brewer.pal(8, "Blues"))(25))
+    image(hrandmean, main = "Random",
+          col= colorRampPalette(brewer.pal(8, "Blues"))(25))
+    image(hnofeasmean, main = "Not feasible",
+          col= colorRampPalette(brewer.pal(8, "Blues"))(25))
   }
 }

@@ -147,14 +147,117 @@ function getparameters(max_n, max_d,
     end
 end
 
+function is_feasible(r::PathResult)
+    return all(real(r.solution) .> 0) 
+end
+
+function is_stable(r::PathResult, jac_mat::Matrix{Expression})
+    #define variables here
+    @var x[1:size(jac_mat,1)]
+    #evaluate jacobian at equilibirum
+    jac_eval = evaluate(jac_mat, x => r.solution)
+    #get eigenvalues
+    lambda_max = maximum(real(eigvals(jac_eval)))
+    if lambda_max < 0
+        return true
+    else
+        return false
+    end
+end
+
+function findstable(r::PathResult)
+    #check if solution  is real
+    if is_real(r)
+        #check if its feasible
+        if is_feasible(r)
+            #check if its stable
+            if is_stable(r, jac_mat)
+                return true
+            else
+                return false
+            end
+        else
+            return false
+        end
+    else
+        return false
+    end
+end
+
+"""
+    getallmodifications(n, k)
+
+generate all posible vectors of n choose k elements
+"""
+function getallmodifications(n, k)
+    return collect(combinations(1:n, k))
+end
+
+"""
+    modifysystem(system, modification, variables)
+
+given a system, a modified system is returned with the power of modification equations, increased by 1, 
+by multiplying by the species in the vector modification
+"""
+function modifysystem(system, modification, variables)
+    modsyst = copy(system)
+    for i in modification
+        modsyst.expressions[i] = variables[i]*modsyst.expressions[i]
+    end    
+    return modsyst
+end
+
+"""
+    is_any_stable(result::Result, jacobian::Matrix{Expression})
+
+given the solutions of a system, determine if any of them is stable
+"""
+function is_any_stable(result::Result, jacobian::Matrix{Expression})
+    #get number of solutions
+    nres = nresults(result)
+    for i in 1:nres
+        sol_stab = is_stable(result.path_results[i], jacobian)
+        if sol_stab
+            return true
+        end
+    end
+    return false
+end
+
+"""
+    findlargeststable(syst)
+
+get size of largest stable system
+"""
+function findlargeststable(syst)
+    nspp = length(syst)
+    x = syst.variables
+    #is the full system stable?
+
+    for i in 1:nspp
+        #find all the combinations nspp choose i
+        vec_mods = getallmodifications(nspp, i)
+        #sequentially modify systems in rows of vec_mod
+        for modification in vec_mods
+            #modify system 
+            mod_sys = modifysystem(syst, modification, x)
+        end
+    end
+    return nlargest
+end
+
+
+
 function parameter_sweep(parameters, rng::AbstractRNG, save_rows::Bool, 
-    distribution::String) #feed directly a distribution?
+    distribution::String, stability::Bool) #feed directly a distribution?
     """
     Perform one sweep over all parameter
     """
     n_pairs = length(parameters)
-    #initialize matrix of results
-    sweepresult=[]
+    n_max = maximum([parameters[i][1] for i in 1:n_pairs])
+    #initialize matrices of results
+    sweep_sum_stat = []
+    sweep_feas_eq = []
     for n_d in 1:n_pairs
         n = parameters[n_d][1]
         d = parameters[n_d][2]
@@ -162,28 +265,69 @@ function parameter_sweep(parameters, rng::AbstractRNG, save_rows::Bool,
         @var x[1:n]
         #create and solve system
         syst = getsystem(x, d, n, rng, true, distribution) #fromtensor = true
+        #construct global variable, jacobian
+        global jac_mat = jacobian(syst)
         #solve system and get real solutions
-        real_sols = real_solutions(solve(syst, show_progress=true))
-        #get number of real and positive solutions
+        real_sols = real_solutions(solve(syst, stop_early_cb = findstable))
+        #get number of real, positive, and stable solutions
         nsol = length(real_sols)
         pos_sols = filter(s -> all(s .> 0), real_sols)
         npos = length(pos_sols)
-        add_rows = [d n nsol npos]
+        nstab = 0
+        if stability && npos > 0 
+            #get largest eigenvalues of jacobian evaluated at all feasible equilibria
+            lambda_max_vec = zeros(Float64, npos)
+            #initialize to store extended solutions
+            pos_sols_store = []
+            for i in 1:npos
+                if i == 1
+                    pos_sols_store = hcat(reshape(pos_sols[i], (1, n)), zeros(1, n_max-n))
+                else
+                    pos_sols_store = [pos_sols_store; hcat(reshape(pos_sols[i], (1,n)), zeros(1, n_max-n))]
+                end
+                #evaluate jacobian at equilibirum i
+                j_eval_i = evaluate(jac_mat, x => pos_sols[i])
+                #get eigenvalues
+                lambda_max_vec[i] = maximum(real(eigvals(j_eval_i)))
+                #if negative, add one to the number of stable equilibria
+                if lambda_max_vec[i] < 0
+                    nstab+=1
+                end
+            end
+            sum_stat = [n d nsol npos nstab]
+            equilibria = hcat(repeat([n d], npos), pos_sols_store, lambda_max_vec)
+            #if no stable equilibria are found, integrate the dynamics
+            if nstab == 0
+            end
+        elseif stability && npos == 0
+            #no feasible equilibria implies 0 stable equilibria
+            sum_stat = [n d nsol npos 0]
+            equilibria = [n d zeros(1, n_max) 0]
+        else 
+            #store results without stability measures (-1 flag)
+            sum_stat = [n d nsol npos -1]
+            equilibria = [n d zeros(1, n_max) -1]
+        end
         #save output to local file
         if save_rows
-            open("../data/parameter_sweeps.csv", "a") do io
-                writedlm(io, add_rows, ' ')
+            open("../data/parameter_sweeps_summary.csv", "a") do io
+                writedlm(io, sum_stat, ' ')
+            end
+            open("../data/parameter_sweeps_equilibira.csv", "a") do io
+                writedlm(io, equilibria, ' ')
             end
         end
         if n_d == 1 
             #create object
-            sweepresult = add_rows
+            sweep_sum_stat = sum_stat
+            sweep_feas_eq = equilibria
         else
             #append
-            sweepresult = [sweepresult; add_rows]
+            sweep_sum_stat = [sweep_sum_stat; sum_stat]
+            sweep_feas_eq = [sweep_feas_eq; equilibria]
         end
     end
-    return sweepresult
+    return sweep_sum_stat, sweep_feas_eq
 end
 
 function manysweeps(n_sweeps::Int64, seed::Int64)
@@ -192,27 +336,35 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     """
     #set distribution from which to sample
     distribution = "normal"
+    #get information about stability
     #form parameter pairs
     parameters = getparameters(8, 6, 20000, false)
     #set seed for parameter sweep
     rng = MersenneTwister(seed)
     #initialize matrix for storing results
-    manysweeps_result = []
+    manysweeps_summary = []
+    manysweeps_equilibria = []
     println("Simulation number:")  
     for sweep in 1:n_sweeps
         if sweep==n_sweeps println(" ", sweep) elseif rem(sweep, 1)==0 print(" ", sweep)  else end
-        sweepresult = parameter_sweep(parameters, rng, true, distribution)
+        sweep_summary, sweep_equilibria = parameter_sweep(parameters, rng, true, distribution, true)
         if sweep == 1 
-            manysweeps_result = sweepresult 
+            manysweeps_summary = sweep_summary 
+            manysweeps_equilibria = sweep_equilibria
         else
-            manysweeps_result = [manysweeps_result; sweepresult] 
+            manysweeps_summary = [manysweeps_summary; sweep_summary] 
+            manysweeps_equilibria = [manysweeps_equilibria; sweep_equilibria]
         end
     end
-    open("../data/sweeps/n_sweeps_"*string(n_sweeps)*"seed_"*string(seed)*".csv", "w") do io
-        writedlm(io, manysweeps_result, ' ')
+    open("../data/sweeps/n_sweeps_"*string(n_sweeps)*"_seed_"*string(seed)*"_summary.csv", "w") do io
+        writedlm(io, manysweeps_summary, ' ')
+    end
+    open("../data/sweeps/n_sweeps_"*string(n_sweeps)*"_seed_"*string(seed)*"_equilibria.csv", "w") do io
+        writedlm(io, manysweeps_equilibria, ' ')
     end
     return manysweeps_result
 end
 
-manysweeps(800, 2) #n_sweeps, seed  
+manysweeps(2000, 1) #n_sweeps, seed  
 #@time manysweeps(parse(Int, ARGS[1]), parse(Int, ARGS[2]))
+    
