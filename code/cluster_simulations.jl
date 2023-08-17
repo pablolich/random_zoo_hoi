@@ -227,13 +227,12 @@ end
 """
     findlargeststable(syst)
 
-get size of largest stable system
+get size of largest stable sub-equilibira
 """
-function findlargeststable(syst)
+function findlargeststable(syst, jacobian)
     nspp = length(syst)
     x = syst.variables
-    #is the full system stable?
-
+    #loop over how many species we are allowed zero out
     for i in 1:nspp
         #find all the combinations nspp choose i
         vec_mods = getallmodifications(nspp, i)
@@ -241,12 +240,18 @@ function findlargeststable(syst)
         for modification in vec_mods
             #modify system 
             mod_sys = modifysystem(syst, modification, x)
+            #solve the system
+            res = solve(mod_sys)
+            #check if any of solutions are stable
+            if is_any_stable(res, jacobian)
+                #return size of the equilibrium that is stable
+                return  nspp - length(modification)
+            end
         end
     end
-    return nlargest
+    #if none found, return 0
+    return 0
 end
-
-
 
 function parameter_sweep(parameters, rng::AbstractRNG, save_rows::Bool, 
     distribution::String, stability::Bool) #feed directly a distribution?
@@ -257,7 +262,7 @@ function parameter_sweep(parameters, rng::AbstractRNG, save_rows::Bool,
     n_max = maximum([parameters[i][1] for i in 1:n_pairs])
     #initialize matrices of results
     sweep_sum_stat = []
-    sweep_feas_eq = []
+    sweep_largest_stab = []
     for n_d in 1:n_pairs
         n = parameters[n_d][1]
         d = parameters[n_d][2]
@@ -267,67 +272,54 @@ function parameter_sweep(parameters, rng::AbstractRNG, save_rows::Bool,
         syst = getsystem(x, d, n, rng, true, distribution) #fromtensor = true
         #construct global variable, jacobian
         global jac_mat = jacobian(syst)
-        #solve system and get real solutions
-        real_sols = real_solutions(solve(syst, stop_early_cb = findstable))
+        result = solve(syst, stop_early_cb = findstable)
+        #get real solutions
+        real_sols = real_solutions(result)
         #get number of real, positive, and stable solutions
         nsol = length(real_sols)
         pos_sols = filter(s -> all(s .> 0), real_sols)
         npos = length(pos_sols)
         nstab = 0
-        if stability && npos > 0 
-            #get largest eigenvalues of jacobian evaluated at all feasible equilibria
-            lambda_max_vec = zeros(Float64, npos)
-            #initialize to store extended solutions
-            pos_sols_store = []
-            for i in 1:npos
-                if i == 1
-                    pos_sols_store = hcat(reshape(pos_sols[i], (1, n)), zeros(1, n_max-n))
-                else
-                    pos_sols_store = [pos_sols_store; hcat(reshape(pos_sols[i], (1,n)), zeros(1, n_max-n))]
-                end
-                #evaluate jacobian at equilibirum i
-                j_eval_i = evaluate(jac_mat, x => pos_sols[i])
-                #get eigenvalues
-                lambda_max_vec[i] = maximum(real(eigvals(j_eval_i)))
-                #if negative, add one to the number of stable equilibria
-                if lambda_max_vec[i] < 0
-                    nstab+=1
-                end
-            end
-            sum_stat = [n d nsol npos nstab]
-            equilibria = hcat(repeat([n d], npos), pos_sols_store, lambda_max_vec)
-            #if no stable equilibria are found, integrate the dynamics
-            if nstab == 0
-            end
-        elseif stability && npos == 0
+        #there are no feasible equilibria
+        if stability && npos == 0
             #no feasible equilibria implies 0 stable equilibria
             sum_stat = [n d nsol npos 0]
-            equilibria = [n d zeros(1, n_max) 0]
-        else 
-            #store results without stability measures (-1 flag)
-            sum_stat = [n d nsol npos -1]
-            equilibria = [n d zeros(1, n_max) -1]
+            #get largest feasible stable
+            nstab = findlargeststable(syst, jac_mat)
+            largest_stab = [n d nstab]
+        #there are some fasible equilibria
+        else stability && npos > 0 
+            #check if any of the feasible are stable
+            if is_any_stable(result, jac_mat)
+                sum_stat = [n d nsol npos 1]
+                largest_stab = [n d n]
+            #check for the largest feasible stable sub-equilibria
+            else
+                sum_stat = [n d nsol npos 0]
+                nstab = findlargeststable(syst, jac_mat)
+                largest_stab = [n d nstab]
+            end
         end
         #save output to local file
         if save_rows
             open("../data/parameter_sweeps_summary.csv", "a") do io
                 writedlm(io, sum_stat, ' ')
             end
-            open("../data/parameter_sweeps_equilibira.csv", "a") do io
-                writedlm(io, equilibria, ' ')
+            open("../data/parameter_sweeps_largest_stab.csv", "a") do io
+                writedlm(io, largest_stab, ' ')
             end
         end
         if n_d == 1 
             #create object
             sweep_sum_stat = sum_stat
-            sweep_feas_eq = equilibria
+            sweep_largest_stab = largest_stab
         else
             #append
             sweep_sum_stat = [sweep_sum_stat; sum_stat]
-            sweep_feas_eq = [sweep_feas_eq; equilibria]
+            sweep_largest_stab = [sweep_largest_stab; largest_stab]
         end
     end
-    return sweep_sum_stat, sweep_feas_eq
+    return sweep_sum_stat, sweep_largest_stab
 end
 
 function manysweeps(n_sweeps::Int64, seed::Int64)
@@ -343,24 +335,24 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     rng = MersenneTwister(seed)
     #initialize matrix for storing results
     manysweeps_summary = []
-    manysweeps_equilibria = []
+    manysweeps_largest_stab = []
     println("Simulation number:")  
     for sweep in 1:n_sweeps
         if sweep==n_sweeps println(" ", sweep) elseif rem(sweep, 1)==0 print(" ", sweep)  else end
-        sweep_summary, sweep_equilibria = parameter_sweep(parameters, rng, true, distribution, true)
+        sweep_summary, sweep_largest_stab = parameter_sweep(parameters, rng, true, distribution, true)
         if sweep == 1 
             manysweeps_summary = sweep_summary 
-            manysweeps_equilibria = sweep_equilibria
+            manysweeps_largest_stab = sweep_largest_stab
         else
             manysweeps_summary = [manysweeps_summary; sweep_summary] 
-            manysweeps_equilibria = [manysweeps_equilibria; sweep_equilibria]
+            manysweeps_largest_stab = [manysweeps_largest_stab; sweep_largest_stab]
         end
     end
     open("../data/sweeps/n_sweeps_"*string(n_sweeps)*"_seed_"*string(seed)*"_summary.csv", "w") do io
         writedlm(io, manysweeps_summary, ' ')
     end
-    open("../data/sweeps/n_sweeps_"*string(n_sweeps)*"_seed_"*string(seed)*"_equilibria.csv", "w") do io
-        writedlm(io, manysweeps_equilibria, ' ')
+    open("../data/sweeps/n_sweeps_"*string(n_sweeps)*"_seed_"*string(seed)*"_largest_stab.csv", "w") do io
+        writedlm(io, manysweeps_largest_stab, ' ')
     end
     return manysweeps_result
 end
