@@ -69,7 +69,7 @@ end
 function onesweep(nspp_vec)
     for i in nspp_vec
         #generate parameters
-        A = 0*ones((i,i)) #.+ 0.01*rand((i, i))
+        A = 0.6*ones((i,i)) #.+ 0.01*rand((i, i))
         for k in 1:i A[k,k] = 0.01 end
         B = 0.2*ones((i, i)) #.+ 0.005*rand((i, i))
         r = 0.3*ones(i) #+ 0.01*rand(i)
