@@ -111,6 +111,7 @@ function getsystem(variables::AbstractVector{Variable},
     """
     #initialize system for polynomial system
     equations = []
+    println("Building system...")
     #build system from a random tensor
     if fromtensor
         #sample a random tensor
@@ -176,6 +177,20 @@ function findstable(r::PathResult)
             else
                 return false
             end
+        else
+            return false
+        end
+    else
+        return false
+    end
+end
+
+function findfeasible(r::PathResult)
+    #check if solution  is real
+    if is_real(r)
+        #check if its feasible
+        if is_feasible(r)
+            return true
         else
             return false
         end
@@ -254,7 +269,6 @@ function parameter_sweep(parameters, rng::AbstractRNG, save_rows::Bool,
     Perform one sweep over all parameter
     """
     n_pairs = length(parameters)
-    n_max = maximum([parameters[i][1] for i in 1:n_pairs])
     #initialize matrices of results
     sweep_sum_stat = []
     sweep_feas_eq = []
@@ -268,7 +282,7 @@ function parameter_sweep(parameters, rng::AbstractRNG, save_rows::Bool,
         #construct global variable, jacobian
         global jac_mat = jacobian(syst)
         #solve system and get real solutions
-        real_sols = real_solutions(solve(syst, stop_early_cb = findstable))
+        real_sols = real_solutions(solve(syst, stop_early_cb = findfeasible, compile = false))
         #get number of real, positive, and stable solutions
         nsol = length(real_sols)
         pos_sols = filter(s -> all(s .> 0), real_sols)
@@ -330,7 +344,7 @@ function parameter_sweep(parameters, rng::AbstractRNG, save_rows::Bool,
     return sweep_sum_stat, sweep_feas_eq
 end
 
-function manysweeps(n_sweeps::Int64, seed::Int64)
+function manysweeps(n_sweeps::Int64, seed::Int64, save::Bool)
     """
     Perform multiple parameter sweeps
     """
@@ -338,7 +352,7 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     distribution = "normal"
     #get information about stability
     #form parameter pairs
-    parameters = getparameters(8, 6, 20000, false)
+    parameters = getparameters(7, 7, 80000, true)
     #set seed for parameter sweep
     rng = MersenneTwister(seed)
     #initialize matrix for storing results
@@ -347,7 +361,7 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     println("Simulation number:")  
     for sweep in 1:n_sweeps
         if sweep==n_sweeps println(" ", sweep) elseif rem(sweep, 1)==0 print(" ", sweep)  else end
-        sweep_summary, sweep_equilibria = parameter_sweep(parameters, rng, true, distribution, true)
+        sweep_summary, sweep_equilibria = parameter_sweep(parameters, rng, save, distribution, true)
         if sweep == 1 
             manysweeps_summary = sweep_summary 
             manysweeps_equilibria = sweep_equilibria
@@ -362,9 +376,8 @@ function manysweeps(n_sweeps::Int64, seed::Int64)
     open("../data/sweeps/n_sweeps_"*string(n_sweeps)*"_seed_"*string(seed)*"_equilibria.csv", "w") do io
         writedlm(io, manysweeps_equilibria, ' ')
     end
-    return manysweeps_result
 end
 
-manysweeps(2000, 1) #n_sweeps, seed  
-#@time manysweeps(parse(Int, ARGS[1]), parse(Int, ARGS[2]))
+@time manysweeps(1, 1, false) #n_sweeps, seed  
+#time manysweeps(parse(Int, ARGS[1]), parse(Int, ARGS[2]))
     
