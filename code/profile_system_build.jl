@@ -72,6 +72,16 @@ function variance_a(assumption::String, d::Integer, j_vec::Array)
     return variance
 end
 
+"""
+    variance_kss(d::Integer, j_vec::Array)
+
+returns variance of kss polynomial coefficient given its degree
+"""
+function variance_kss(d::Integer, j_vec::Array)
+    j_vec_expanded = [j_vec; (d - sum(j_vec))]
+    multinomialcoeff(d, j_vec_expanded)
+end
+
 function getsystem(variables::AbstractVector{Variable}, 
     d::Int64, n::Int64, rng::AbstractRNG, fromtensor::Bool, 
     distribution::String)
@@ -115,16 +125,16 @@ function rand_poly_dist(T,
     Each coefficient is sampled independently from a Normal(0, var) or a Uniform(-0.5,0.5).
     """
     M = monomials(vars, d; affine = !homogeneous)
-    print(M)
     n_terms = length(M)
     coefficient_list = zeros(Float16, n_terms)
     for i in 1:n_terms
+        println("Iteration ", i)
         monomial_i = M[i]
         #get exponents of each variable in monomial i
-        exponents, coeffs = exponents_coefficients(monomial_i, vars)
+        exponents, coeffs = exponents_coefficients(monomial_i, vars;expanded = true) #expanded reduces time
         if distribution == "gaussian"
             #compute the variance of ith coefficient using mulitinomial coefficient
-            variance = variance_a(assumption, d, exponents)
+            variance = variance_kss(d, exponents)
             #sample ith coefficient from a gaussian with computed variance
             coefficient_list[i] = sqrt(variance)*randn(T)
         elseif distribution == "uniform"
@@ -160,7 +170,7 @@ function one_sweep()
     distribution = "gaussian"
     #get information about stability
     #form parameter pairs
-    parameters = getparameters(5, 5, 80000, false)
+    parameters = getparameters([1,2,3,4,5,1,2,3,4,5], [3,3,3,3,3,6,6,6,6,6], 80000, true)
     #set seed for parameter sweep
     rng = MersenneTwister(1)
     n_pairs = length(parameters)
@@ -202,4 +212,4 @@ function many_sweeps(n_sweeps)
     end
 end
 
-many_sweeps(2)
+many_sweeps(100)

@@ -128,7 +128,7 @@ function getsystem(variables::AbstractVector{Variable},
     #build system from polynomial coefficients directly
     else
         for i in 1:n
-            append!(equations, rand_poly_dist(Float16, vars, d, distribution, assumption))
+            append!(equations, rand_poly_dist(Float16, variables, d, distribution, "kss"))
         end
     end
     System(equations)
@@ -269,6 +269,7 @@ function parameter_sweep(parameters, rng::AbstractRNG, save_rows::Bool,
     Perform one sweep over all parameter
     """
     n_pairs = length(parameters)
+    n_max = maximum([parameters[i][1] for i in 1:n_pairs])
     #initialize matrices of results
     sweep_sum_stat = []
     sweep_feas_eq = []
@@ -278,11 +279,12 @@ function parameter_sweep(parameters, rng::AbstractRNG, save_rows::Bool,
         #declare dynamic variables
         @var x[1:n]
         #create and solve system
-        syst = getsystem(x, d, n, rng, true, distribution) #fromtensor = true
+        syst = getsystem(x, d, n, rng, false, distribution) #fromtensor = true
         #construct global variable, jacobian
         global jac_mat = jacobian(syst)
         #solve system and get real solutions
-        real_sols = real_solutions(solve(syst, stop_early_cb = findfeasible, compile = false))
+        real_sols = real_solutions(solve(syst, stop_early_cb = findfeasible, compile = true,
+                                         start_system = :total_degree))
         #get number of real, positive, and stable solutions
         nsol = length(real_sols)
         pos_sols = filter(s -> all(s .> 0), real_sols)
@@ -349,7 +351,7 @@ function manysweeps(n_sweeps::Int64, seed::Int64, save::Bool)
     Perform multiple parameter sweeps
     """
     #set distribution from which to sample
-    distribution = "normal"
+    distribution = "gaussian"
     #get information about stability
     #form parameter pairs
     parameters = getparameters(7, 7, 80000, true)
