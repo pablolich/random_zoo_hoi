@@ -45,11 +45,11 @@ function buildpoly(allmonomials::Vector{Expression}, nmon::Int64, vars::Abstract
 end
 
 """
-    buildhomotopy(n::Int64, d::Int64, vars::AbstractVector)
+    buildstartsystem(n::Int64, d::Int64, vars::AbstractVector)
 
 construct homotopy for all kss systems of n polynomials of degree d
 """
-function buildhomotopy(n::Int64, d::Int64, vars::AbstractVector)
+function buildstartsystem(n::Int64, d::Int64, vars::AbstractVector)
     G = []
     for i in 1:n
         append!(G,vars[i]^d-1)
@@ -151,8 +151,11 @@ end
 
 determine the feasibility of all kss systems of a given n, d
 """
-function computefeasibility(systems, n::Int64, d::Int64, nsim::Int64)
+function computefeasibility(systems, n::Int64, d::Int64, nsim::Int64, vars::AbstractVector, deform)
     results = []
+    #create start system and start solutions
+    syst0 = buildstartsystem(n, d, vars)
+    sols0 = getstartsolutions(n, d)
     #loop over systems
     for i in 1:nsim
         #deal separately with the case of just one system
@@ -162,13 +165,23 @@ function computefeasibility(systems, n::Int64, d::Int64, nsim::Int64)
             syst = systems[:,i][1]
         end
         #solve system numerically
-        sols = real_solutions(solve(syst, 
-                                    stop_early_cb = stopatfeasible, #stop when a feasible solution is found
-                                    compile = false, #not introduce compilation overhead
-                                    start_system = :total_degree, #efficient way to start searching
-                                    threading = true, #allow multithreading
-                                    #seed = UInt32(1), #seed for trackers
-                                    show_progress = false))
+        if deform == "deformed"
+            sols = real_solutions(solve(syst0, syst, sols0, #track sols0 during the deformation of g to f
+                                        stop_early_cb = stopatfeasible, #stop when a feasible solution is found
+                                        compile = false, #not introduce compilation overhead
+                                        #start_system = :total_degree, #efficient way to start searching
+                                        threading = true, #allow multithreading
+                                        seed = UInt32(1), #seed for trackers
+                                        show_progress = false))
+        else 
+            sols = real_solutions(solve(syst, #track sols0 during the deformation of g to f
+                                        stop_early_cb = stopatfeasible, #stop when a feasible solution is found
+                                        compile = false, #not introduce compilation overhead
+                                        #start_system = :total_degree, #efficient way to start searching
+                                        threading = true, #allow multithreading
+                                        seed = UInt32(1), #seed for trackers
+                                        show_progress = false))
+        end
         #determine if there is a feasible solution
         pos_sols = filter(s -> all(s .> 0), sols)
         npos = length(pos_sols)
@@ -204,7 +217,7 @@ end
 
 perform a parameter sweep with bounds given by nmax and dmax
 """
-function parametersweep(nmax::Int64, dmax::Int64, nsim::Int64, seed::Int64)
+function parametersweep(nmax::Int64, dmax::Int64, nsim::Int64, seed::Int64, deform)
     parameters = getparameters(nmax, dmax, 80000, true)
     n_pairs = length(parameters)
     #initialize random generator
@@ -216,11 +229,12 @@ function parametersweep(nmax::Int64, dmax::Int64, nsim::Int64, seed::Int64)
         @var x[1:n]
         #create all systems
         systems = buildall(n, d, nsim, x, rng)
-        computefeasibility(systems, n, d, nsim)
+        computefeasibility(systems, n, d, nsim, x, deform)
     end 
 end
 
 seed = 1 
 
-@time parametersweep(8,6,1, seed)
+@time parametersweep(2,2,2,seed, "deformed")
+@time parametersweep(2,2,2,seed, "not")
 #check if I can do the combinations and [8, 6]
