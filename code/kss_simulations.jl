@@ -219,10 +219,10 @@ function parametersweep(nmax, dmax, nsim::Int64, seed::Int64)
         #create all systems
         println("Building all systems...")
         systems = buildall(n, d, nsim, x, rng)
-        t_total = @elapsed computefeasibility(systems, n, d, nsim, x, true)
+        computefeasibility(systems, n, d, nsim, x, true)
     end
 end
 
 seed = 1 
 
-@time parametersweep([8, 7, 8],[6, 6, 5],1,seed)
+@time parametersweep([8, 7, 8],[6, 6, 5], 1, seed)
