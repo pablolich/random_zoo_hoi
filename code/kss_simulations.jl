@@ -225,4 +225,4 @@ end
 
 seed = 1 
 
-@time parametersweep([8, 7, 8],[6, 6, 5], 1, seed)
+parametersweep([8, 7, 8],[6, 6, 5], 150, seed)
