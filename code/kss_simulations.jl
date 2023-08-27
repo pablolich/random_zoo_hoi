@@ -49,12 +49,8 @@ end
 
 construct homotopy for all kss systems of n polynomials of degree d
 """
-function buildstartsystem(n::Int64, d::Int64, vars::AbstractVector)
-    G = []
-    for i in 1:n
-        append!(G,vars[i]^d-1)
-    end
-    System(G)
+function buildstartsystem(D, vars::AbstractVector)
+    System(vars .^ D .- 1, vars)
 end
 
 """
@@ -63,7 +59,7 @@ end
 construct all solutions for n equations of the form x^d-1 = 0
 """
 function getstartsolutions(n::Int64, d::Int64)
-    map(k -> [exp(im * 2 * pi * k[i] / d) for i in 1:2], Iterators.product(repeat([0:d-1],n)...))
+    map(k -> [exp(im * 2 * pi * k[i] / d) for i in 1:n], Iterators.product(repeat([0:d-1],n)...))
 end
 
 """
@@ -133,11 +129,11 @@ function stopatfeasible(r::PathResult)
 end
 
 """
-    store(i::Int64, storemat, tostore::Matrix{Int64})
+    storerow(i::Int64, storemat, tostore::Matrix{Int64})
 
 storing results in a matrix
 """
-function storerow(i::Int64, storemat, tostore::Matrix{Int64})
+function storerow(i::Int64, storemat, tostore::Matrix{Float64})
     if i == 1
         storemat = tostore
     else
@@ -151,11 +147,8 @@ end
 
 determine the feasibility of all kss systems of a given n, d
 """
-function computefeasibility(systems, n::Int64, d::Int64, nsim::Int64, vars::AbstractVector, deform)
+function computefeasibility(systems, n::Int64, d::Int64, nsim::Int64, vars::AbstractVector, save::Bool)
     results = []
-    #create start system and start solutions
-    syst0 = buildstartsystem(n, d, vars)
-    sols0 = getstartsolutions(n, d)
     #loop over systems
     for i in 1:nsim
         #deal separately with the case of just one system
@@ -165,23 +158,14 @@ function computefeasibility(systems, n::Int64, d::Int64, nsim::Int64, vars::Abst
             syst = systems[:,i][1]
         end
         #solve system numerically
-        if deform == "deformed"
-            sols = real_solutions(solve(syst0, syst, sols0, #track sols0 during the deformation of g to f
-                                        stop_early_cb = stopatfeasible, #stop when a feasible solution is found
-                                        compile = false, #not introduce compilation overhead
-                                        #start_system = :total_degree, #efficient way to start searching
-                                        threading = true, #allow multithreading
-                                        seed = UInt32(1), #seed for trackers
-                                        show_progress = false))
-        else 
-            sols = real_solutions(solve(syst, #track sols0 during the deformation of g to f
-                                        stop_early_cb = stopatfeasible, #stop when a feasible solution is found
-                                        compile = false, #not introduce compilation overhead
-                                        #start_system = :total_degree, #efficient way to start searching
-                                        threading = true, #allow multithreading
-                                        seed = UInt32(1), #seed for trackers
-                                        show_progress = false))
-        end
+        println("solving system...(", i, ")")
+        sols = real_solutions(solve(syst, #track sols0 during the deformation of g to f
+                                    stop_early_cb = stopatfeasible, #stop when a feasible solution is found
+                                    compile = false, #not introduce compilation overhead
+                                    start_system = :total_degree, #efficient way to start searching
+                                    threading = true, #allow multithreading
+                                    seed = UInt32(1), #seed for trackers
+                                    show_progress = false))
         #determine if there is a feasible solution
         pos_sols = filter(s -> all(s .> 0), sols)
         npos = length(pos_sols)
@@ -189,9 +173,11 @@ function computefeasibility(systems, n::Int64, d::Int64, nsim::Int64, vars::Abst
         append!(results, [n d npos])
     end
     results = reshape(results, 3, nsim)
-    #save
-    open("../data/kss_simulations.csv", "a") do io
-        writedlm(io, results', ' ')
+    #save?
+    if save
+        open("../data/kss_simulations.csv", "a") do io
+            writedlm(io, results', ' ')
+        end
     end
 end
 
@@ -201,7 +187,7 @@ end
 
 construct tuple of parameter combinations for parameter sweep
 """
-function getparameters(max_n::Int64, max_d::Int64, 
+function getparameters(max_n, max_d, 
     comp_limit::Int64, specific_pairs::Bool)
     if specific_pairs
         n_d = hcat(max_n, max_d)
@@ -217,24 +203,26 @@ end
 
 perform a parameter sweep with bounds given by nmax and dmax
 """
-function parametersweep(nmax::Int64, dmax::Int64, nsim::Int64, seed::Int64, deform)
+function parametersweep(nmax, dmax, nsim::Int64, seed::Int64)
     parameters = getparameters(nmax, dmax, 80000, true)
     n_pairs = length(parameters)
     #initialize random generator
     rng = MersenneTwister(seed)
+    #initialize benchmarking storing objects
+    benchmark = []
     for n_d in 1:n_pairs
         n = parameters[n_d][1]
         d = parameters[n_d][2]
+        println("System size ", n, " System degree ", d)
         #get variables
         @var x[1:n]
         #create all systems
+        println("Building all systems...")
         systems = buildall(n, d, nsim, x, rng)
-        computefeasibility(systems, n, d, nsim, x, deform)
-    end 
+        t_total = @elapsed computefeasibility(systems, n, d, nsim, x, true)
+    end
 end
 
 seed = 1 
 
-@time parametersweep(2,2,2,seed, "deformed")
-@time parametersweep(2,2,2,seed, "not")
-#check if I can do the combinations and [8, 6]
+@time parametersweep([8, 7, 8],[6, 6, 5],1,seed)
