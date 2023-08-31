@@ -9,6 +9,21 @@ function glv!(dy, y, s, W, t)
     dy =  Dy * (s - W*y)    
 end
 
+function glvhoi!(dy, x, r, A, B, t)
+    for i in 1:n
+        pairs = []
+        triplets = []
+        for j in 1:n
+            pairs += A[i,j]*x[j]
+            for k in 1:n
+                triplets += B[i,j,k]*x[j]*x[k]
+            end
+        end
+        dy[i] = x[i]*(r[i]+ pairs + triplets)
+    end
+    return dy
+end
+
 """
     buildsystem(allmonomials::Vector{Expression}, nmon::Int64, vars::AbstractVector, 
     n::Int64, d::Int64, rng::AbstractRNG)
