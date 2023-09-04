@@ -2,14 +2,18 @@ using SciMLBase
 using LinearAlgebra
 using HomotopyContinuation
 using Random
+using DelimitedFiles
+using DifferentialEquations
 
 
-function glv!(dy, y, s, W, t)
+function glv!(dy, y, p, t)
+    s, W = p
     Dy = Diagonal(y)
     dy =  Dy * (s - W*y)    
 end
 
-function glvhoi!(dy, x, r, A, B, t)
+function glvhoi!(dy, x, p, t)
+    r, A, B = p
     for i in 1:n
         pairs = []
         triplets = []
@@ -23,6 +27,55 @@ function glvhoi!(dy, x, r, A, B, t)
     end
     return dy
 end
+
+x0 = [0.5;1.5]
+r = [1.0;1.0]
+A = [1.0 0.1;0.2 1.0]
+p = (r, A)
+tspan = (0.0, 10.0)
+prob = ODEProblem(glvfunc!, x0, tspan, p)
+sol = DifferentialEquations.solve(prob, Tsit5())
+prob = ODEProblem(glvfuncpoly!, x0, tspan, p)
+solpoly = DifferentialEquations.solve(prob, Tsit5())
+#get data frame with dense solutions
+t_dense = collect(range(0, stop=10, length=1000))
+solt = sol(t_dense)
+soltpoly = solpoly(t_dense)
+
+function glvfunc!(dx,x,p,t)
+    #parse parameters
+    r, A = p
+    dx[1] = x[1]*(r[1]-A[1,1]*x[1] - A[1,2]*x[2]/(1+x[2]))
+    dx[2] = x[2]*(r[2] - A[2,2]*x[2] - A[2,1]*x[1]/(1+x[1]))
+    return dx
+end
+
+function glvfuncpoly!(dx,x,p,t)
+    r, A = p
+    dx[1] = x[1]*((r[1]-A[1,1]*x[1])*(1+x[2]) - A[1,2]*x[2])
+    dx[2] = x[2]*((r[2] - A[2,2]*x[2])*(1+x[1]) - A[2,1]*x[1])
+end
+
+function integrateitmescale()
+    x0 = [0.5;1.5]
+    r = [1.0;1.0]
+    A = [1.0 0.1;0.2 1.0]
+    p = (r, A)
+    tspan = (0.0, 10.0)
+    prob = ODEProblem(glvfunc!, x0, tspan, p)
+    sol = DifferentialEquations.solve(prob, Tsit5())
+    prob = ODEProblem(glvfuncpoly!, x0, tspan, p)
+    solpoly = DifferentialEquations.solve(prob, Tsit5())
+    #get data frame with dense solutions
+    t_dense = collect(range(0, stop=10, length=1000))
+    solt = sol(t_dense)
+    soltpoly = solpoly(t_dense)
+    solsall = [t_dense solt[1,:] solt[2,:] soltpoly[1,:] soltpoly[2,:]]
+    open("../data/timescaleseparation.csv", "a") do io
+        writedlm(io, solsall, ' ')
+    end
+end
+
 
 """
     buildsystem(allmonomials::Vector{Expression}, nmon::Int64, vars::AbstractVector, 
