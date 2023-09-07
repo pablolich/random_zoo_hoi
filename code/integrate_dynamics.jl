@@ -6,14 +6,25 @@ using DelimitedFiles
 using DifferentialEquations
 
 
+"""
+    glv!(dy, y, p, t)
+
+a glv model
+"""
 function glv!(dy, y, p, t)
     s, W = p
     Dy = Diagonal(y)
     dy =  Dy * (s - W*y)    
 end
 
-function glvhoi!(dy, x, p, t)
+"""
+    glvhoi!(dx, x, p, t)
+
+glv-hoi model for integration
+"""
+function glvhoi!(dx, x, p, t)
     r, A, B = p
+    n = lengh(r)
     for i in 1:n
         pairs = []
         triplets = []
@@ -23,25 +34,69 @@ function glvhoi!(dy, x, p, t)
                 triplets += B[i,j,k]*x[j]*x[k]
             end
         end
-        dy[i] = x[i]*(r[i]+ pairs + triplets)
+        dx[i] = x[i]*(r[i]+ pairs + triplets)
     end
-    return dy
+    return dx
 end
 
-x0 = [0.5;1.5]
-r = [1.0;1.0]
-A = [1.0 0.1;0.2 1.0]
-p = (r, A)
+"""
+    coeffstosyst(x, coeffs)
+
+transform glv-hoi coefficients into multivariate polynomial system.
+"""
+function coeffstosyst(x, coeffs)
+    r, A, B = coeffs
+    n = length(r)
+    dy = []
+    for i in 1:n
+        pairs = 0
+        triplets = 0
+        for j in 1:n
+            pairs += A[i,j]*x[j]
+            for k in 1:n
+                triplets += B[i,j,k]*x[j]*x[k]
+            end
+        end
+        row_i = x[i]*(r[i]+ pairs + triplets)
+        dy = storerow(i, dy, row_i)
+    end
+    return System(dy)
+end
+
+# set variables and integration time window
+@var x[1:3]
 tspan = (0.0, 10.0)
-prob = ODEProblem(glvfunc!, x0, tspan, p)
+#initial conditions and parameters of glv with hoi
+x0 = [0.5;1.5;2.0]
+r = [1.0;1.0;1.0]
+A = [1.0 0.1 0.1;0.2 1.0 0.2; 0.3 0.3 1.0]
+B = rand(3,3,3)
+phoi = (r, A, B)
+#integrate normal glv hoi
+prob = ODEProblem(glvhoi!, x0, tspan, phoi)
+solhoi = DifferentialEquations.solve(prob, Tsit5())
+
+#transform hoi parameters to polynomial system
+syst = coeffstosyst(x, phoi)
+#get parameters and initial conditions for equivalent higher dimensional glv
+T, O = getexpcoeffsyst(syst, 3, 3, x)
+W = transpose(T)*O #matrix of interactions
+s = transpose(T)*r #growth rates
+y0 = exp(transpose(T)*log(x0))
+#integrate extended glv
+prob = ODEProblem(glv!, x0, tspan, pglv)
 sol = DifferentialEquations.solve(prob, Tsit5())
-prob = ODEProblem(glvfuncpoly!, x0, tspan, p)
-solpoly = DifferentialEquations.solve(prob, Tsit5())
+
 #get data frame with dense solutions
 t_dense = collect(range(0, stop=10, length=1000))
 solt = sol(t_dense)
 soltpoly = solpoly(t_dense)
 
+"""
+    glvfunc!(dx,x,p,t)
+
+lotka-volterra with type II functional response
+"""
 function glvfunc!(dx,x,p,t)
     #parse parameters
     r, A = p
@@ -50,12 +105,22 @@ function glvfunc!(dx,x,p,t)
     return dx
 end
 
+"""
+    glvfuncpoly!(dx,x,p,t)
+
+lotka-volterra with hois coming from non-linearities
+"""
 function glvfuncpoly!(dx,x,p,t)
     r, A = p
     dx[1] = x[1]*((r[1]-A[1,1]*x[1])*(1+x[2]) - A[1,2]*x[2])
     dx[2] = x[2]*((r[2] - A[2,2]*x[2])*(1+x[1]) - A[2,1]*x[1])
 end
 
+"""
+    integrateitmescale()
+
+generate data for timescale plots
+"""
 function integrateitmescale()
     x0 = [0.5;1.5]
     r = [1.0;1.0]
@@ -139,7 +204,7 @@ end
 
 storing results in a matrix
 """
-function storerow(i::Int64, storemat, tostore::Matrix{Float64})
+function storerow(i::Int64, storemat, tostore)
     if i == 1
         storemat = tostore
     else
@@ -148,21 +213,25 @@ function storerow(i::Int64, storemat, tostore::Matrix{Float64})
     return storemat
 end
 
-function getW(system::System, n::Int64, d::Int64, vars::AbstractVector)
-    #initialize holders for coeffficients with first row
+"""
+    getexpcoeffsyst(system::System, n::Int64, d::Int64, vars::AbstractVector)
+
+Get matrices of exponents and coefficients of the system
+"""
+function getexpcoeffsyst(system::System, n::Int64, d::Int64, vars::AbstractVector)
+    #initialize coeffficients matrix
     O = []
     for i in 1:n
         #get equation i's exponents and coefficients
         exps, coeffs = exponents_coefficients(system.expressions[i], vars)
         #leave 0 exponents out
         coeffs0 = coeffs[1:(end-1)]
+        coeffsr = coeffs[end]
         #store
         O = storerow(i, O, reshape(coeffs0, (1, length(coeffs0))))
     end
-    exp0 = exps[:, 1:(end-1)]
-    println(exp0)
-    W = transpose(exp0)*O
-    return W
+    T = exps[:, 1:(end-1)]
+    return T, O
 end
 
 function main(vars::AbstractVector, n::Int64, d::Int64, rng::AbstractRNG)
@@ -170,7 +239,7 @@ function main(vars::AbstractVector, n::Int64, d::Int64, rng::AbstractRNG)
     #build system
     syst = buildsystem(allmon, length(allmon), vars, n, d, rng)
     #build matrix W
-    W = getW(syst, n, d, vars)
+    W = getparsglv(syst, n, d, vars)
 end
 
 seed = 1
