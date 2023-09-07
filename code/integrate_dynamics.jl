@@ -4,17 +4,27 @@ using HomotopyContinuation
 using Random
 using DelimitedFiles
 using DifferentialEquations
+using Plots
 
 
 """
-    glv!(dy, y, p, t)
+    glvext!(dy, y, p, t)
 
-a glv model
+a glv model representing a non-linear system via glv-trick
 """
-function glv!(dy, y, p, t)
-    s, W = p
-    Dy = Diagonal(y)
-    dy =  Dy * (s - W*y)    
+function glvext!(dy, y, p, t)
+    s, W, T, n = p
+    #get variables of original system
+    x = last(y, n)
+    #ensure variable constraints
+    y = exp.(transpose(T)*log.(x))
+    #run extended glv equations
+    #Dy = Diagonal(y)
+    for i in 1:length(y)
+        dy[i] =  y[i] * (s[i] + dot(W[i,:], y))    
+    end
+    println("new dy: ", dy)
+    return dy
 end
 
 """
@@ -24,10 +34,10 @@ glv-hoi model for integration
 """
 function glvhoi!(dx, x, p, t)
     r, A, B = p
-    n = lengh(r)
+    n = length(r)
     for i in 1:n
-        pairs = []
-        triplets = []
+        pairs = 0
+        triplets = 0
         for j in 1:n
             pairs += A[i,j]*x[j]
             for k in 1:n
@@ -57,40 +67,11 @@ function coeffstosyst(x, coeffs)
                 triplets += B[i,j,k]*x[j]*x[k]
             end
         end
-        row_i = x[i]*(r[i]+ pairs + triplets)
+        row_i = r[i]+ pairs + triplets
         dy = storerow(i, dy, row_i)
     end
     return System(dy)
 end
-
-# set variables and integration time window
-@var x[1:3]
-tspan = (0.0, 10.0)
-#initial conditions and parameters of glv with hoi
-x0 = [0.5;1.5;2.0]
-r = [1.0;1.0;1.0]
-A = [1.0 0.1 0.1;0.2 1.0 0.2; 0.3 0.3 1.0]
-B = rand(3,3,3)
-phoi = (r, A, B)
-#integrate normal glv hoi
-prob = ODEProblem(glvhoi!, x0, tspan, phoi)
-solhoi = DifferentialEquations.solve(prob, Tsit5())
-
-#transform hoi parameters to polynomial system
-syst = coeffstosyst(x, phoi)
-#get parameters and initial conditions for equivalent higher dimensional glv
-T, O = getexpcoeffsyst(syst, 3, 3, x)
-W = transpose(T)*O #matrix of interactions
-s = transpose(T)*r #growth rates
-y0 = exp(transpose(T)*log(x0))
-#integrate extended glv
-prob = ODEProblem(glv!, x0, tspan, pglv)
-sol = DifferentialEquations.solve(prob, Tsit5())
-
-#get data frame with dense solutions
-t_dense = collect(range(0, stop=10, length=1000))
-solt = sol(t_dense)
-soltpoly = solpoly(t_dense)
 
 """
     glvfunc!(dx,x,p,t)
@@ -224,27 +205,49 @@ function getexpcoeffsyst(system::System, n::Int64, d::Int64, vars::AbstractVecto
     for i in 1:n
         #get equation i's exponents and coefficients
         exps, coeffs = exponents_coefficients(system.expressions[i], vars)
-        #leave 0 exponents out
+        #leave 0 esxponents out
         coeffs0 = coeffs[1:(end-1)]
         coeffsr = coeffs[end]
         #store
         O = storerow(i, O, reshape(coeffs0, (1, length(coeffs0))))
     end
+    exps, coeffs = exponents_coefficients(system.expressions[1], vars)
     T = exps[:, 1:(end-1)]
     return T, O
 end
 
-function main(vars::AbstractVector, n::Int64, d::Int64, rng::AbstractRNG)
-    allmon = monomials(vars, d)
-    #build system
-    syst = buildsystem(allmon, length(allmon), vars, n, d, rng)
-    #build matrix W
-    W = getparsglv(syst, n, d, vars)
-end
+"""
+    testglvtrick()
 
-seed = 1
-rng = MersenneTwister(seed)
-n = 2
-d = 2
-@var x[1:n]
-#y0 = 
+test that the glv trick gives me the same results as integrating the dynamics directly
+"""
+function testglvtrick()
+    #set variables and integration time window
+    @var z[1:3]
+    tspan = (0.0, 20.0)
+    #initial conditions and parameters of glv with hoi
+    x0 = [0.5;1.5;2.0]
+    r = [1.0;1.0;1.0]
+    A = -[1.0 0.1 0.1;0.2 1.0 0.2; 0.3 0.3 1.0]
+    B = -rand(3,3,3)
+    phoi = (r, A, B)
+    #integrate normal glv hoi
+    prob = ODEProblem(glvhoi!, x0, tspan, phoi)
+    solhoi = DifferentialEquations.solve(prob, Tsit5())
+    stationaryhoi = solhoi[end]
+
+    #transform hoi parameters to polynomial system
+    syst = coeffstosyst(z, phoi)
+    #get parameters and initial conditions for equivalent higher dimensional glv
+    T, O = getexpcoeffsyst(syst, 3, 3, z)
+    W = transpose(T)*O #matrix of interactions
+    s = transpose(T)*r #growth rates
+    pglv = (s, W, T, 3)
+    y0 = exp.(transpose(T)*log.(x0))
+    #integrate extended glv
+    prob = ODEProblem(glvext!, y0, tspan, pglv)
+    sol = DifferentialEquations.solve(prob, Tsit5())
+    stationarytrick = sol[7:9,end]
+    println("Solution from brute force integration: ", stationaryhoi)
+    println("Solution from glv-trick: ", stationarytrick)
+end
