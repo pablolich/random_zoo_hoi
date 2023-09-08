@@ -5,7 +5,32 @@ using Random
 using DelimitedFiles
 using DifferentialEquations
 using Plots
+using Statistics
 
+
+"""
+    glvfunc!(dx,x,p,t)
+
+lotka-volterra with type II functional response
+"""
+function glvfunc!(dx,x,p,t)
+    #parse parameters
+    r, A = p
+    dx[1] = x[1]*(r[1]-A[1,1]*x[1] - A[1,2]*x[2]/(1+x[2]))
+    dx[2] = x[2]*(r[2] - A[2,2]*x[2] - A[2,1]*x[1]/(1+x[1]))
+    return dx
+end
+
+"""
+    glvfuncpoly!(dx,x,p,t)
+
+lotka-volterra with hois coming from non-linearities
+"""
+function glvfuncpoly!(dx,x,p,t)
+    r, A = p
+    dx[1] = x[1]*((r[1]-A[1,1]*x[1])*(1+x[2]) - A[1,2]*x[2])
+    dx[2] = x[2]*((r[2] - A[2,2]*x[2])*(1+x[1]) - A[2,1]*x[1])
+end
 
 """
     glvext!(dy, y, p, t)
@@ -50,93 +75,30 @@ function glvhoi!(dx, x, p, t)
 end
 
 """
-    coeffstosyst(x, coeffs)
+    storerow(i::Int64, storemat, tostore::Matrix{Int64})
 
-transform glv-hoi coefficients into multivariate polynomial system.
+storing results in a matrix row wise
 """
-function coeffstosyst(x, coeffs)
-    r, A, B = coeffs
-    n = length(r)
-    dy = []
-    for i in 1:n
-        pairs = 0
-        triplets = 0
-        for j in 1:n
-            pairs += A[i,j]*x[j]
-            for k in 1:n
-                triplets += B[i,j,k]*x[j]*x[k]
-            end
-        end
-        row_i = r[i]+ pairs + triplets
-        dy = storerow(i, dy, row_i)
+function storerow(i::Int64, storemat, tostore)
+    if i == 1
+        storemat = tostore
+    else
+        storemat = vcat(storemat, tostore)
     end
-    return System(dy)
+    return storemat
 end
-
 """
-    glvfunc!(dx,x,p,t)
+    storerow(i::Int64, storemat, tostore::Matrix{Int64})
 
-lotka-volterra with type II functional response
+storing results in a matrix column wise
 """
-function glvfunc!(dx,x,p,t)
-    #parse parameters
-    r, A = p
-    dx[1] = x[1]*(r[1]-A[1,1]*x[1] - A[1,2]*x[2]/(1+x[2]))
-    dx[2] = x[2]*(r[2] - A[2,2]*x[2] - A[2,1]*x[1]/(1+x[1]))
-    return dx
-end
-
-"""
-    glvfuncpoly!(dx,x,p,t)
-
-lotka-volterra with hois coming from non-linearities
-"""
-function glvfuncpoly!(dx,x,p,t)
-    r, A = p
-    dx[1] = x[1]*((r[1]-A[1,1]*x[1])*(1+x[2]) - A[1,2]*x[2])
-    dx[2] = x[2]*((r[2] - A[2,2]*x[2])*(1+x[1]) - A[2,1]*x[1])
-end
-
-"""
-    integrateitmescale()
-
-generate data for timescale plots
-"""
-function integrateitmescale()
-    x0 = [0.5;1.5]
-    r = [1.0;1.0]
-    A = [1.0 0.1;0.2 1.0]
-    p = (r, A)
-    tspan = (0.0, 10.0)
-    prob = ODEProblem(glvfunc!, x0, tspan, p)
-    sol = DifferentialEquations.solve(prob, Tsit5())
-    prob = ODEProblem(glvfuncpoly!, x0, tspan, p)
-    solpoly = DifferentialEquations.solve(prob, Tsit5())
-    #get data frame with dense solutions
-    t_dense = collect(range(0, stop=10, length=1000))
-    solt = sol(t_dense)
-    soltpoly = solpoly(t_dense)
-    solsall = [t_dense solt[1,:] solt[2,:] soltpoly[1,:] soltpoly[2,:]]
-    open("../data/timescaleseparation.csv", "a") do io
-        writedlm(io, solsall, ' ')
+function storecol(i::Int64, storemat, tostore)
+    if i == 1
+        storemat = tostore
+    else
+        storemat = hcat(storemat, tostore)
     end
-end
-
-
-"""
-    buildsystem(allmonomials::Vector{Expression}, nmon::Int64, vars::AbstractVector, 
-    n::Int64, d::Int64, rng::AbstractRNG)
-
-construct a kss system of n polynomials of degree d
-"""
-function buildsystem(allmonomials::Vector{Expression}, nmon::Int64, vars::AbstractVector, 
-    n::Int64, d::Int64, rng::AbstractRNG)
-    equations = []
-    #loop over number of equations in each system
-    for j in 1:n
-        append!(equations, buildpoly(allmonomials, nmon, vars, d, rng))
-    end
-    System(equations)
+    return storemat
 end
 
 """
@@ -181,17 +143,140 @@ function buildpoly(allmonomials::Vector{Expression}, nmon::Int64, vars::Abstract
 end
 
 """
-    storerow(i::Int64, storemat, tostore::Matrix{Int64})
+    buildsystem(allmonomials::Vector{Expression}, nmon::Int64, vars::AbstractVector, 
+    n::Int64, d::Int64, rng::AbstractRNG)
 
-storing results in a matrix
+construct a kss system of n polynomials of degree d
 """
-function storerow(i::Int64, storemat, tostore)
-    if i == 1
-        storemat = tostore
-    else
-        storemat = vcat(storemat, tostore)
+function buildsystem(allmonomials::Vector{Expression}, nmon::Int64, vars::AbstractVector, 
+    n::Int64, d::Int64, rng::AbstractRNG)
+    equations = []
+    #loop over number of equations in each system
+    for j in 1:n
+        append!(equations, buildpoly(allmonomials, nmon, vars, d, rng))
     end
-    return storemat
+    System(equations)
+end
+
+"""
+    coeffstosyst(x, coeffs)
+
+transform glv-hoi coefficients into multivariate polynomial system.
+"""
+function coeffstosyst(x, coeffs)
+    r, A, B = coeffs
+    n = length(r)
+    dy = []
+    for i in 1:n
+        pairs = 0
+        triplets = 0
+        for j in 1:n
+            pairs += A[i,j]*x[j]
+            for k in 1:n
+                triplets += B[i,j,k]*x[j]*x[k]
+            end
+        end
+        row_i = r[i]+ pairs + triplets
+        dy = storerow(i, dy, row_i)
+    end
+    return System(dy)
+end
+
+"""
+    isbounded(solution)
+
+oscillations are bounded
+"""
+function isbounded(solution::ODESolution)
+    #get dense solution at 10 different equispaced time intervals
+    t_dense = collect(range(solution.t[1], solution.t[end], 1000))
+    t_intervals = collect(range(solution.t[1], solution.t[end], 10))
+    soldense = solution(t_dense)
+    #get abundances over the last tenth
+    indslast = findall(t_dense .> t_intervals[9])
+    solutiontail = soldense[:, indslast]
+    npoints = length(indslast)
+    #calculate moving average
+    nvar, nt = size(solutiontail)
+    moving_av = []
+    for i in 1:nt
+        #get a solution window
+        sol_window = solutiontail[:,1:i]
+        #calculae average
+        av_sol = mean(sol_window, dims=2)
+        moving_av = storecol(i, moving_av, av_sol)
+    end
+    #check if the average becomes constant
+    differences = diff(moving_av, dims = 2)
+    #get the sum of the absoltue values of those differences for each time series
+    total_differences = sum(abs.(differences), dims = 2)
+    #impose that the total difference for all species is small
+    if all(total_differences .< 1e-6*npoints)
+        return true
+    else
+        return false
+    end
+end
+
+"""
+    isconstant(solution)
+
+entropy becomes constant
+"""
+function isconstant(solution::ODESolution)
+    #get dense solution at 10 different equispaced time intervals
+    t_dense = collect(range(solution.t[1], solution.t[end], 1000))
+    t_intervals = collect(range(solution.t[1], solution.t[end], 10))
+    soldense = solution(t_dense)
+    #get abundances over the last tenth
+    indslast = findall(t_dense .> t_intervals[9])
+    npoints = length(indslast)
+    abundanceslast = soldense[:, indslast]
+    #get differences between consecutive abundances of each species for the last tenth of time series
+    differences = diff(abundanceslast, dims = 2)
+    #get the sum of the absoltue values of those differences for each time sereis
+    total_differences = sum(abs.(differences), dims = 2)
+    #impose that the total difference for all species is small
+    if all(total_differences .< 1e-6*npoints)
+        return true
+    else
+        return false
+    end
+end
+
+"""
+    ispersistent(solution)
+
+check if solution is persistent (steady state or bounded oscillations)
+"""
+function ispersistent(solution::ODESolution, maxtol::Float64, mintol::Float64, n::Int64)
+    #get only abundances of the real species
+    endstate = last(solution[end], n)
+    #check if the end state is not divergent, and there are no extinctions
+    if all(endstate .< maxtol) & all(endstate .> mintol)  
+        #check if the state is bounded or constant     
+        if isbounded(solution) | isconstant(solution)
+            return true
+        else
+            return false
+        end
+    else 
+        return false
+    end
+end
+
+"""
+    integratesystem(initial, parameters, tspan)
+
+integrate glv dynamics given initial conditions, parameters, and time span
+"""
+function integratesystem(func, initial::Vector{Float64}, tspan::Tuple, parameters::Tuple, n::Int64)
+    #create ODE problem
+    problem = ODEProblem(func, initial, tspan, parameters)
+    #solve it
+    sol = DifferentialEquations.solve(problem, Tsit5())
+    #check if a persistent state has been reached
+    ispersistent(sol, 1e6, 1e-6, n)
 end
 
 """
@@ -214,6 +299,31 @@ function getexpcoeffsyst(system::System, n::Int64, d::Int64, vars::AbstractVecto
     exps, coeffs = exponents_coefficients(system.expressions[1], vars)
     T = exps[:, 1:(end-1)]
     return T, O
+end
+
+"""
+    integrateitmescale()
+
+generate data for timescale plots
+"""
+function integratetimescale()
+    x0 = [0.5;1.5]
+    r = [1.0;1.0]
+    A = [1.0 0.1;0.2 1.0]
+    p = (r, A)
+    tspan = (0.0, 10.0)
+    prob = ODEProblem(glvfunc!, x0, tspan, p)
+    sol = DifferentialEquations.solve(prob, Tsit5())
+    prob = ODEProblem(glvfuncpoly!, x0, tspan, p)
+    solpoly = DifferentialEquations.solve(prob, Tsit5())
+    #get data frame with dense solutions
+    t_dense = collect(range(0, stop=10, length=1000))
+    solt = sol(t_dense)
+    soltpoly = solpoly(t_dense)
+    solsall = [t_dense solt[1,:] solt[2,:] soltpoly[1,:] soltpoly[2,:]]
+    open("../data/timescaleseparation.csv", "a") do io
+        writedlm(io, solsall, ' ')
+    end
 end
 
 """
