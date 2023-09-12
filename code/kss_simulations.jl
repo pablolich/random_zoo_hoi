@@ -208,8 +208,6 @@ function parametersweep(nmax, dmax, nsim::Int64, seed::Int64)
     n_pairs = length(parameters)
     #initialize random generator
     rng = MersenneTwister(seed)
-    #initialize benchmarking storing objects
-    benchmark = []
     for n_d in 1:n_pairs
         n = parameters[n_d][1]
         d = parameters[n_d][2]
