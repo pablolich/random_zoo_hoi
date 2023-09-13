@@ -42,10 +42,10 @@ function glvext!(dy, y, p, t)
     #get variables of original system
     x = last(y, n)
     #ensure variable constraints
-    y = exp.(transpose(T)*log.(abs.(x))) #take absoltue values of x ot avoid errors
+    #y = exp.(transpose(T)*log.(abs.(x))) #take absoltue values of x ot avoid errors
     #run extended glv equations
     #Dy = Diagonal(y)
-    for i in 1:length(y)
+    for i in 1:size(y, 1) 
         dy[i] =  y[i] * (s[i] + dot(W[i,:], y))    
     end
     return dy
@@ -271,12 +271,13 @@ check if solution is diverging
 function isdivergent(solution::ODESolution, maxtol::Float64, n::Int64)
     #get only abundances of the real species
     endstate = last(solution[end], n)
-    #check if the end state is divergent
-    if all(abs.(endstate) .< maxtol)
-        println("solution did not diverge")
-        return true    
-    else 
+    println("end state ", endstate)
+    #check if any of the components of the end state are divergent
+    if any(abs.(endstate) .> maxtol)
         println("solution diverged")
+        return true   
+    else 
+        println("solution did not diverge")
         return false
     end
 end
@@ -287,13 +288,6 @@ end
 integrate glv dynamics given initial conditions, parameters, and time span, until persistent state is reached
 """
 function getstablediversity(func, initial::Vector{Float64}, tspan::Tuple, parameters::Tuple, n::Int64)
-    #create ODE problem
-    problem = ODEProblem(func, initial, tspan, parameters)
-    #solve it
-    sol = DifferentialEquations.solve(problem, Tsit5())
-    if isdivergent(sol, 1e6, n)
-        return false
-    else
         #check if a persistent state has been reached
         persistent = ispersistent(sol, n)
         while !persistent
@@ -301,7 +295,7 @@ function getstablediversity(func, initial::Vector{Float64}, tspan::Tuple, parame
             #set new initial state as last state of the previous integration
             initial = sol[end]
             #zero out extinct species
-            initial[findall(initial.>1e-6)] .= 0
+            initial[findall(initial.<1e-6)] .= 0
             #integrate again
             problem = ODEProblem(func, initial, tspan, parameters)
             sol = DifferentialEquations.solve(problem, Tsit5())
@@ -312,7 +306,6 @@ function getstablediversity(func, initial::Vector{Float64}, tspan::Tuple, parame
                 persistent = ispersistent(sol, n)
             end
         end
-    end
     endstate = sol[end]
     diversity = length(findall(endstate.>1e-6))
     return diversity
@@ -323,7 +316,7 @@ end
 
 Get matrices of exponents and coefficients of the system
 """
-function getexpcoeffsyst(system::System, n::Int64, d::Int64, vars::AbstractVector)
+function getexpcoeffsyst(system::System, n::Int64, vars::AbstractVector)
     #initialize coeffficients matrix
     O = []
     r = []
@@ -347,20 +340,55 @@ end
 
 build and integrate a kss system of n polynomials of degree d
 """
-function integratekss(n::Int64, d::Int64, vars::AbstractVector, rng::AbstractRNG)
+function integratekss(func, n::Int64, d::Int64, vars::AbstractVector, rng::AbstractRNG)
+    fail = 0
+    constant = false
+    oscillating = false
     #build system
     allmon = monomials(vars, d)
     nmon = length(allmon)
-    syst = buildsystem(allmon, nmon, vars, n, d, rng)
-    #get parameters and initial condition of corresponding glv system
-    T, O, r = getexpcoeffsyst(syst, n, d, vars)
-    W = transpose(T)*O #extended matrix of interactions
-    s = transpose(T)*r #extended growth rates
-    pglv = (s, W, T, n)
-    initial = ones(size(T, 1))
-    #integrate dynamics
-    div = getstablediversity(glvext!, initial, (0, 1e6), pglv, n)
-    return div
+    while fail != 1
+        syst = buildsystem(allmon, nmon, vars, n, d, rng)
+        #get parameters and initial condition of corresponding glv system
+        T, O, r = getexpcoeffsyst(syst, n, vars)
+        W = transpose(T)*O #extended matrix of interactions
+        s = transpose(T)*r #extended growth rates
+        pglv = (s, W, T, n)
+        x0 = rand(size(T, 1))
+        y0 = exp.(transpose(T)*log.(x0))
+        #create problem and integrate
+        problem = ODEProblem(func, y0, (0, 1e2), pglv)
+        sol = DifferentialEquations.solve(problem, Tsit5())
+        fail = Int(sol.retcode)
+        constant = isconstant(sol, n)
+        oscillating = isoscillating(sol, n)
+        nint = 1
+        if fail == 1
+            #ensure that a persistent state has been reached
+            while !constant || !oscillating
+                y0 = sol[end]
+                problem = ODEProblem(func, y0, (0, 1e2), pglv)
+                sol = DifferentialEquations.solve(problem, Tsit5())
+                fail = Int(sol.retcode)
+                constant = isconstant(sol, n)
+                oscillating = isoscillating(sol, n)
+                nint += 1
+                #interrupt if it doesn't converge after many re-integrations
+                if nint > 100
+                    break
+                #interrupt if the integration fails
+                elseif fail != 1
+                    break
+                else
+                end
+            end
+        else
+        end
+    end
+    endstate = last(sol[end], n)
+    diversity = length(findall(endstate.>1e-6))
+    print(diversity)
+    return diversity
 end
 
 """
@@ -368,13 +396,14 @@ end
 
 generate data§ from integrations
 """
-function sweepntimes(max_n::Int64, max_d::Int64, nsweeps::Int64, seed::Int64)
+function sweepntimes(max_n::Int64, max_d::Int64, nsweeps::Int64, seedx::Int64)
     parameters = [(x, y) for x in 1:max_n, y in 1:max_d]
     n_pairs = length(parameters)
     #initialize random generator
-    rng = MersenneTwister(seed)
+    rng = MersenneTwister(seedx)
     #initialize storing 
     results = []
+    row = 1
     for n_d in 1:n_pairs
         n = parameters[n_d][1]
         d = parameters[n_d][2]
@@ -382,18 +411,17 @@ function sweepntimes(max_n::Int64, max_d::Int64, nsweeps::Int64, seed::Int64)
         div = false
         for sim in 1:nsweeps
             println("System size ", n, " System degree ", d, " Simulation ", sim)
-            while !div
-                div = integratekss(n, d, x, rng)
-            end
-            append!(results,[n d div])
+            div = integratekss(glvext!, n, d, x, rng)
+            results = storerow(row, results, [n d div])
+            row += 1
         end
     end
     open("../data/kss_simulations.csv", "a") do io
-        writedlm(io, results', ' ')
+        writedlm(io, results, ' ')
     end
 end
 
-sweepntimes(3, 3, 2, 1)
+sweepntimes(8, 6, 2, 1)
 
 """
     integrateitmescale()
@@ -428,7 +456,7 @@ test that the glv trick gives me the same results as integrating the dynamics di
 function testglvtrick()
     #set variables and integration time window
     @var z[1:3]
-    tspan = (0.0, 20.0)
+    tspan = (0.0, 20.0)  
     #initial conditions and parameters of glv with hoi
     x0 = [0.5;1.5;2.0]
     r = [1.0;1.0;1.0]
@@ -443,7 +471,7 @@ function testglvtrick()
     #transform hoi parameters to polynomial system
     syst = coeffstosyst(z, phoi)
     #get parameters and initial conditions for equivalent higher dimensional glv
-    T, O, r = getexpcoeffsyst(syst, 3, 3, z)
+    T, O, r = getexpcoeffsyst(syst, 3, z)
     W = transpose(T)*O #matrix of interactions
     s = transpose(T)*r #growth rates
     pglv = (s, W, T, 3)
@@ -454,4 +482,5 @@ function testglvtrick()
     stationarytrick = sol[7:9,end]
     println("Solution from brute force integration: ", stationaryhoi)
     println("Solution from glv-trick: ", stationarytrick)
-end
+    return sol
+end 
