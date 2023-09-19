@@ -75,7 +75,7 @@ function buildsystem(allmonomials::Vector{Expression}, nmon::Int64, vars::Abstra
     for j in 1:n
         append!(equations, buildpoly(allmonomials, nmon, vars, d, rng))
     end
-    System(equations)
+    equations
 end
 
 """
@@ -154,18 +154,40 @@ function computefeasibility(systems, n::Int64, d::Int64, nsim::Int64, vars::Abst
         #deal separately with the case of just one system
         if nsim == 1
             syst = systems
+            powers, pars = 
+            syst_fix = fix_parameters(syst)
         else
             syst = systems[:,i][1]
+            syst_fix = fix_parameters(syst)
         end
         #solve system numerically
         println("solving system...(", i, ")")
-        sols = real_solutions(solve(syst, #track sols0 during the deformation of g to f
-                                    stop_early_cb = stopatfeasible, #stop when a feasible solution is found
-                                    compile = false, #not introduce compilation overhead
-                                    start_system = :total_degree, #efficient way to start searching
-                                    threading = true, #allow multithreading
-                                    seed = UInt32(1), #seed for trackers
-                                    show_progress = false))
+        if parameter_homotopy
+            #get one solution for the first iteration
+            init_sol = []
+            p1 = 
+            if i == 1
+                sols = solutions(solve(syst, 
+                                       stop_early_cb = stopatfeasible,
+                                       compile = false,
+                                       start_system = :total_degree,
+                                       threading = true,
+                                       seed = UInt32(1),
+                                       show_progress = false))
+                init_sol = sols
+            else
+
+            end
+
+        else
+            sols = real_solutions(solve(syst, #track sols0 during the deformation of g to f
+                                        stop_early_cb = stopatfeasible, #stop when a feasible solution is found
+                                        compile = false, #not introduce compilation overhead
+                                        start_system = :total_degree, #efficient way to start searching
+                                        threading = true, #allow multithreading
+                                        seed = UInt32(1), #seed for trackers
+                                        show_progress = false))
+        end
         #determine if there is a feasible solution
         pos_sols = filter(s -> all(s .> 0), sols)
         npos = length(pos_sols)

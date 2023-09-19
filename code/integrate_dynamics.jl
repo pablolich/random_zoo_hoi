@@ -286,24 +286,28 @@ end
 integrate glv dynamics given initial conditions, parameters, and time span, until persistent state is reached
 """
 function getstablediversity(func, initial::Vector{Float64}, tspan::Tuple, parameters::Tuple, n::Int64)
-        #check if a persistent state has been reached
-        persistent = ispersistent(sol, n)
-        while !persistent
-            println("re-integrating...")
-            #set new initial state as last state of the previous integration
-            initial = sol[end]
-            #zero out extinct species
-            initial[findall(initial.<1e-6)] .= 0
-            #integrate again
-            problem = ODEProblem(func, initial, tspan, parameters)
-            sol = DifferentialEquations.solve(problem, Tsit5())
-            #check if solution diverges in subsequent integrations
-            if isdivergent(sol, 1e6, n)
-                return false
-            else
-                persistent = ispersistent(sol, n)
-            end
+    #integrate
+    println("try integration")
+    problem = ODEProblem(func, initial, tspan, parameters)
+    sol = DifferentialEquations.solve(problem, Tsit5())
+    #check if a persistent state has been reached
+    persistent = ispersistent(sol, n)
+    while !persistent
+        println("re-integrating...")
+        #set new initial state as last state of the previous integration
+        initial = sol[end]
+        #zero out extinct species
+        initial[findall(initial.<1e-6)] .= 0
+        #integrate again
+        problem = ODEProblem(func, initial, tspan, parameters)
+        sol = DifferentialEquations.solve(problem, Tsit5())
+        #check if solution diverges in subsequent integrations
+        if isdivergent(sol, 1e6, n)
+            return false
+        else
+            persistent = ispersistent(sol, n)
         end
+    end
     endstate = sol[end]
     diversity = length(findall(endstate.>1e-6))
     return diversity
