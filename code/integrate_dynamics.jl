@@ -352,8 +352,8 @@ function integratekss(n::Int64, d::Int64, vars::AbstractVector, rng::AbstractRNG
     allmon = monomials(vars, d)
     nmon = length(allmon)
     syst = buildsystem(allmon, nmon, vars, n, d, rng)
-    #get parameters and initial condition of corresponding glv system
-    T, O, r = getexpcoeffsyst(syst, n, d, vars)
+        #get parameters and initial condition of corresponding glv system
+        T, O, r = getexpcoeffsyst(syst, n, d, vars)
     W = transpose(T)*O #extended matrix of interactions
     s = transpose(T)*r #extended growth rates
     pglv = (s, W, T, n)
@@ -372,7 +372,7 @@ function sweepntimes(max_n::Int64, max_d::Int64, nsweeps::Int64, seed::Int64)
     parameters = [(x, y) for x in 1:max_n, y in 1:max_d]
     n_pairs = length(parameters)
     #initialize random generator
-    rng = MersenneTwister(seed)
+    rng = MersenneTwister(seeds)
     #initialize storing 
     results = []
     for n_d in 1:n_pairs
