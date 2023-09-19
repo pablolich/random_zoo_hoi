@@ -44,10 +44,8 @@ function glvext!(dy, y, p, t)
     #ensure variable constraints
     #y = exp.(transpose(T)*log.(abs.(x))) #take absoltue values of x ot avoid errors
     #run extended glv equations
-    #Dy = Diagonal(y)
-    for i in 1:size(y, 1) 
-        dy[i] =  y[i] * (s[i] + dot(W[i,:], y))    
-    end
+    Dy = Diagonal(y)
+    dy .= Dy*(s + W*y)
     return dy
 end
 
@@ -347,6 +345,7 @@ function integratekss(func, n::Int64, d::Int64, vars::AbstractVector, rng::Abstr
     #build system
     allmon = monomials(vars, d)
     nmon = length(allmon)
+    sol = []
     while fail != 1
         syst = buildsystem(allmon, nmon, vars, n, d, rng)
         #get parameters and initial condition of corresponding glv system
@@ -374,7 +373,7 @@ function integratekss(func, n::Int64, d::Int64, vars::AbstractVector, rng::Abstr
                 oscillating = isoscillating(sol, n)
                 nint += 1
                 #interrupt if it doesn't converge after many re-integrations
-                if nint > 100
+                if nint > 10
                     break
                 #interrupt if the integration fails
                 elseif fail != 1
@@ -387,7 +386,6 @@ function integratekss(func, n::Int64, d::Int64, vars::AbstractVector, rng::Abstr
     end
     endstate = last(sol[end], n)
     diversity = length(findall(endstate.>1e-6))
-    print(diversity)
     return diversity
 end
 
@@ -421,7 +419,7 @@ function sweepntimes(max_n::Int64, max_d::Int64, nsweeps::Int64, seedx::Int64)
     end
 end
 
-sweepntimes(8, 6, 2, 1)
+@time sweepntimes(5,5,100,1)
 
 """
     integrateitmescale()
@@ -482,5 +480,4 @@ function testglvtrick()
     stationarytrick = sol[7:9,end]
     println("Solution from brute force integration: ", stationaryhoi)
     println("Solution from glv-trick: ", stationarytrick)
-    return sol
 end 
