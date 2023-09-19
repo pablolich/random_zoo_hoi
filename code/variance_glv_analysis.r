@@ -63,7 +63,7 @@ colnames(df_sum) = c("x1", "x2", "x3", "x4", "sum")
 
 variance_df=tibble()
 for (h in seq(2, 10)){
-  for (p in seq(1,9)){
+  for (p in seq(0,9)){
     if (p>=h){
       variance_df = rbind(variance_df, tibble(
         p = p,
