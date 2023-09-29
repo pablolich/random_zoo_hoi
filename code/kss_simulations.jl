@@ -37,9 +37,9 @@ function buildpoly(allmonomials::Vector{Expression}, nmon::Int64, vars::Abstract
         #get exponents of each variable in monomial i
         exponents, coeffs = exponents_coefficients(monomial_i, vars; expanded = true) #expanded reduces time
         #compute the variance of ith coefficient using mulitinomial coefficient
-        var = variance(d, exponents)
+        vari = variance(d, exponents)
         #sample ith coefficient from a gaussian with computed variance
-        coefficient_list[i] = sqrt(var)*randn(rng, Float16)
+        coefficient_list[i] = sqrt(vari)*randn(rng, Float16)
     end
     sum(coefficient_list .* allmonomials)
 end
@@ -75,7 +75,59 @@ function buildsystem(allmonomials::Vector{Expression}, nmon::Int64, vars::Abstra
     for j in 1:n
         append!(equations, buildpoly(allmonomials, nmon, vars, d, rng))
     end
-    System(equations)
+    HomotopyContinuation.System(equations)
+end
+
+"""
+    numberofcoefficients(d::Int64, n::Int64)
+
+Compute number of monomials of a dense polynomial of degree d on n variables 
+"""
+function numberofcoefficients(d::Int64, n::Int64)
+    ncoeffs = 0
+    for i in 0:n
+        ncoeffs += binomial(d+i-1, d-1)
+    end
+    return ncoeffs
+end
+
+"""
+    samplecoefficients(poly::Expression, vars::AbstractVector, d::Int64, n::Int64)
+
+return coefficients of one n-variate polynomial of degree d with the kss distribution
+"""
+function samplecoefficients(poly::Expression, vars::AbstractVector, d::Int64, n::Int64, times::Int64, rng::AbstractRNG)
+    #calculate number of coefficients to sample
+    ncoeffs = numberofcoefficients(d, n)
+    coefficient_list = []
+    #get matrix of exponents
+    exponents, coeffs = exponents_coefficients(poly, vars)
+    #loop over each monomial
+    for i in 1:ncoeffs
+        #calculate appropriate variance
+        vari = variance(d, exponents[:, i])
+        #sample coefficients
+        append!(coefficient_list, sqrt(vari)*randn(rng, Float16, times))
+    end
+    return coefficient_list
+end
+
+"""
+    buildparsystem(vars::AbstractVector, n::Int64, d::Int64)
+
+Build a system of n dense multivariate polynomials of degree d on variables 
+x1, ..., xn, where all the coefficients are parameters c_{ij}, where i in 1:n, and
+j in 1:t, where t is calculated as numberofcoefficients(d, n)
+"""
+function buildparsystem(vars::AbstractVector, n::Int64, d::Int64)
+    equations = []
+    coefficients = []
+    for i in 1:n
+        polyi, coeffi = dense_poly(vars, d, coeff_name = Symbol(:c, "_", string(i)))
+        append!(equations, polyi)
+        append!(coefficients, coeffi)
+    end
+    return(System(equations, parameters = convert(Vector{Variable}, coefficients)))
 end
 
 """
@@ -107,6 +159,20 @@ return true if all components of r are positive
 """
 function is_feasible(r::PathResult)
     return all(real(r.solution) .> 0) 
+end
+
+"""
+    stopatreal(r::PathResult)
+
+    return true if r is real
+"""
+function stopatreal(r::PathResult)
+    #check if solution  is real
+    if is_real(r)
+        return true
+    else
+        return false
+    end
 end
 
 """
@@ -153,9 +219,9 @@ function computefeasibility(systems, n::Int64, d::Int64, nsim::Int64, vars::Abst
     for i in 1:nsim
         #deal separately with the case of just one system
         if nsim == 1
-            syst = systems
+            syst = System(systems)
         else
-            syst = systems[:,i][1]
+            syst = System(systems[:,i][1])
         end
         #solve system numerically
         println("solving system...(", i, ")")
@@ -166,6 +232,121 @@ function computefeasibility(systems, n::Int64, d::Int64, nsim::Int64, vars::Abst
                                     threading = true, #allow multithreading
                                     seed = UInt32(1), #seed for trackers
                                     show_progress = false))
+        #determine if there is a feasible solution
+        pos_sols = filter(s -> all(s .> 0), sols)
+        npos = length(pos_sols)
+        #store
+        append!(results, [n d npos])
+    end
+    results = reshape(results, 3, nsim)
+    #save?
+    if save
+        open("../data/kss_simulations.csv", "a") do io
+            writedlm(io, results', ' ')
+        end
+    end
+end
+
+"""
+    getcoefficients(system, vars, d)
+
+returns a vector with coefficients of all polynomials in the system
+"""
+function getcoefficients(system, vars, d)
+    nexpr = length(system.expressions)
+    coefficients = []
+    for i in 1:nexpr
+        append!(coefficients, coeffs_as_dense_poly(system.expressions[i], vars, d))
+    end
+    return coefficients
+end
+
+function solveandsave(seedx)
+    rng = MersenneTwister(seedx)
+    for n in 1:4
+        for d in 1:4
+            println("Diversity: ", n, " Interaction order: ", d)
+            #set variables
+            @var x[1:n]
+            #sample monomial structure
+            M = monomials(x, d)
+            nmon = length(M)
+            result = []
+            #create a system
+            syst = buildsystem(M, nmon, x, n, d, rng) #d-1 is the polynomial degree
+            #solve system and get real solutions
+            result = solve(syst,
+                        compile = false, #not introduce compilation overhead
+                        start_system = :total_degree, #efficient way to start searching
+                        threading = true, #allow multithreading
+                        seed = UInt32(1), #seed for trackers
+                        show_progress = true)
+            #save it
+            solsfilename = "solutions_n_"*string(n)*"_d_"*string(d)
+            write_solutions("../data/startsystems/"*solsfilename*".csv", solutions(result))
+            #get coefficients of the system
+            coeffs = getcoefficients(syst, x, d)
+            coeffsfilename = "coeffs_n_"*string(n)*"_d_"*string(d)
+            open("../data/startsystems/"*coeffsfilename*".csv", "a") do io
+                writedlm(io, coeffs', ' ')
+            end
+            #save coefficients
+        end
+    end
+end
+
+function loadparameters(n, d)
+    coeffsfilename = "coeffs_n_"*string(n)*"_d_"*string(d)
+    return vec(readdlm("../data/startsystems/"*coeffsfilename*".csv"))
+end
+
+"""
+    computefeasibility2(n::Int64, d::Int64, nsim::Int64)
+
+determine the feasibility of all kss systems of a given n, d
+"""
+function computefeasibility2(n::Int64, d::Int64, nsim::Int64, vars::AbstractVector, rng::AbstractRNG, save::Bool)
+    results = []
+    #create generalized polynomial system
+    syst = buildparsystem(vars, n, d)
+    #load coefficients and precomputed solutions
+    pinit = loadparameters(n, d)
+    startsols = read_solutions("../data/startsystems/solutions_n_"*string(n)*"_d_"*string(d)*".csv")
+    #loop over systems
+    for i in 1:nsim
+        #   sample parameters of final system
+        pfinal = samplecoefficients(syst.expressions[1], vars, d, n, n, rng)
+        #solve system numerically
+        println("solving system...(", i, ")")
+        result = solve(syst, startsols; #track startsols
+                        start_parameters = pinit, 
+                        target_parameters = pfinal, #perform parameter homotopy
+                        stop_early_cb = stopatfeasible, #stop when a feasible solution is found
+                        compile = false, #not introduce compilation overhead
+                        #start_system = :total_degree, #efficient way to start searching
+                        threading = true, #allow multithreading
+                        seed = UInt32(1), #seed for trackers
+                        show_progress = true)
+        solutions(result)
+        #check if succeded
+        foundroot = is_success(path_results(result)[1])
+        if foundroot 
+            sols = real_solutions(result)
+        else
+            #deal separately with the case of just one system
+            if nsim == 1
+                syst = System(systems)
+            else
+                syst = System(systems[:,i][1])
+            end
+            sols = real_solutions(solve(syst, #track sols0 during the deformation of g to f
+                                        stop_early_cb = stopatfeasible, #stop when a feasible solution is found
+                                        compile = false, #not introduce compilation overhead
+                                        start_system = :total_degree, #efficient way to start searching
+                                        threading = true, #allow multithreading
+                                        seed = UInt32(1), #seed for trackers
+                                        show_progress = false))
+        end
         #determine if there is a feasible solution
         pos_sols = filter(s -> all(s .> 0), sols)
         npos = length(pos_sols)
@@ -204,7 +385,7 @@ end
 perform a parameter sweep with bounds given by nmax and dmax
 """
 function parametersweep(nmax, dmax, nsim::Int64, seed::Int64)
-    parameters = getparameters(nmax, dmax, 80000, true)
+    parameters = getparameters(nmax, dmax, 80000, false)
     n_pairs = length(parameters)
     #initialize random generator
     rng = MersenneTwister(seed)
@@ -217,10 +398,33 @@ function parametersweep(nmax, dmax, nsim::Int64, seed::Int64)
         #create all systems
         println("Building all systems...")
         systems = buildall(n, d, nsim, x, rng)
-        computefeasibility(systems, n, d, nsim, x, true)
+        computefeasibility(systems, n, d, nsim, x, false)
     end
 end
 
-seed = 1 
+"""
+    parametersweep2(nmax::Int64, dmax::Int64, nsim::Int64)
 
-parametersweep([8, 7, 8],[6, 6, 5], 150, seed)
+perform a parameter sweep with bounds given by nmax and dmax
+"""
+function parametersweep2(nmax, dmax, nsim::Int64, seed::Int64)
+    parameters = getparameters(nmax, dmax, 80000, false)
+    n_pairs = length(parameters)
+    #initialize random generator
+    rng = MersenneTwister(seed)
+    for n_d in 1:n_pairs
+        n = parameters[n_d][1]
+        d = parameters[n_d][2]
+        println("System size ", n, " System degree ", d)
+        #get variables
+        @var x[1:n]
+        computefeasibility2(n, d, nsim, x, rng, false)
+    end
+end
+
+
+seedx = 1
+solveandsave(seedx)
+seedx = 2
+@time parametersweep(4, 4, 10, seedx)
+@time parametersweep2(4, 4, 10, seedx)
