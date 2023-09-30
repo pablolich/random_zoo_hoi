@@ -318,16 +318,16 @@ function computefeasibility2(n::Int64, d::Int64, nsim::Int64, vars::AbstractVect
         pfinal = samplecoefficients(syst.expressions[1], vars, d, n, n, rng)
         #solve system numerically
         println("solving system...(", i, ")")
-        result = solve(syst, startsols; #track startsols
+        resul2 = solve(syst, startsols; #track startsols
                         start_parameters = pinit, 
                         target_parameters = pfinal, #perform parameter homotopy
-                        stop_early_cb = stopatfeasible, #stop when a feasible solution is found
+                        #stop_early_cb = stopatfeasible, #stop when a feasible solution is found
                         compile = false, #not introduce compilation overhead
                         #start_system = :total_degree, #efficient way to start searching
                         threading = true, #allow multithreading
-                        seed = UInt32(1), #seed for trackers
+                        #seed = UInt32(1), #seed for trackers
                         show_progress = true)
-        solutions(result)
+        solutions(result2)
         #check if succeded
         foundroot = is_success(path_results(result)[1])
         if foundroot 
