@@ -107,7 +107,7 @@ function samplecoefficients(poly::Expression, vars::AbstractVector, d::Int64, n:
         #calculate appropriate variance
         vari = variance(d, exponents[:, i])
         #sample coefficients
-        append!(coefficient_list, sqrt(vari)*randn(rng, Float16, times))
+        append!(coefficient_list, sqrt(vari)*randn(rng, Float64, times))
     end
     return coefficient_list
 end
@@ -312,6 +312,8 @@ function computefeasibility2(n::Int64, d::Int64, nsim::Int64, vars::AbstractVect
     #load coefficients and precomputed solutions
     pinit = loadparameters(n, d)
     startsols = read_solutions("../data/startsystems/solutions_n_"*string(n)*"_d_"*string(d)*".csv")
+    #generate all parameters at once
+    all_pars = [samplecoefficients(syst.expressions[1], vars, d, n, n, rng) for _ in 1:nsim]
     #loop over systems
     for i in 1:nsim
         #   sample parameters of final system
