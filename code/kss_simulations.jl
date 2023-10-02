@@ -322,7 +322,7 @@ function computefeasibility2(n::Int64, d::Int64, nsim::Int64, vars::AbstractVect
         println("solving system...(", i, ")")
         resul2 = solve(syst, startsols; #track startsols
                         start_parameters = pinit, 
-                        target_parameters = pfinal, #perform parameter homotopy
+                        target_parameters = all_pars, #perform parameter homotopy
                         #stop_early_cb = stopatfeasible, #stop when a feasible solution is found
                         compile = false, #not introduce compilation overhead
                         #start_system = :total_degree, #efficient way to start searching

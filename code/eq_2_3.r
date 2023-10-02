@@ -8,7 +8,7 @@ return(sum(Bi*Tx))
 
 model <- function(x){
 #evaluate model at a given parameters B, and abundances x
-return(c(Fi(B[1,,,],x),Fi(B[2,,,],x),Fi(B[3,,,],x)))
+return(c(Fi(B[1,,,],x),Fi(B[2,,,],x)))
 }
 
 random_tensor <- function(d, n){

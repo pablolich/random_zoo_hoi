@@ -1,5 +1,6 @@
 library(pracma)
 library(tidyverse)
+library(ggplot2)
 
 write_kss_model <- function(n, d){
   sink(paste0("eq_", n, "_", d, ".r"))
@@ -46,8 +47,9 @@ write_kss_model <- function(n, d){
 }
 
 #test
-maxd = 3#6
-maxn = 3#8
+maxd = 2#6
+maxn = 4
+tol = 1e-10
 results = expand.grid(2:maxn, 1:maxd)
 #add extra column
 results[,3] = rep(0,nrow(results))
@@ -61,7 +63,7 @@ for (nd in 1:nrow(results)){
   source(paste0("eq_", n, "_", d, ".r"))
   #find solutions
   search_sol <- function(x0){
-    tmp <- fsolve(model, x0)
+    tmp <- fsolve(model, x0, tol = tol)
     return(-sum(tmp$x[tmp$x < 0]))
   }
   
@@ -74,9 +76,13 @@ for (nd in 1:nrow(results)){
       if(tmp$value > 0) tmp <- optim(par = rnorm(n), fn = search_sol)
     }
     if (tmp$value == 0) {
-      print(paste0("Diversity: ", n, "Interaction order: ", d,  "Simulation: ", j, "success"))
+      print(paste0("Diversity: ", n, " Interaction order: ", d,  " Simulation: ", j, " was successful"))
     }
     prob <- prob + (tmp$value == 0)
   }
   results[nd,3] = prob/500
 }
+
+
+ggplot(results, aes(x= n, y=pf))+
+  geom_point(aes(color = as.factor(d)))
