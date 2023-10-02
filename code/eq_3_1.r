@@ -2,7 +2,7 @@ Fi <- function(Bi, x){
 #evaluate model at given parameters B (globally), and abundances x
 x = flatten_dbl(list(x))
 xmod = c(x, 1)
-Tx <-  xmod%o%xmod
+Tx <-  xmod
 return(sum(Bi*Tx))
 }
 

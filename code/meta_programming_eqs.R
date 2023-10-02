@@ -9,7 +9,10 @@ write_kss_model <- function(n, d){
   cat("#evaluate model at given parameters B (globally), and abundances x\n")
   cat("x = flatten_dbl(list(x))\n")
   cat("xmod = c(x, 1)\n")
-  outerx <- paste0("xmod",paste0(rep("%o%xmod",d), collapse = ""))
+  outerx = "xmod"
+  if (d>1){
+    outerx <- paste0(outerx,paste0(rep("%o%xmod",d-1), collapse = ""))
+  }
   cat("Tx <- ", outerx)
   cat("\nreturn(sum(Bi*Tx))\n}\n\n")
   
