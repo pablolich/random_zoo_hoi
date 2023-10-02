@@ -74,7 +74,7 @@ for (nd in 1:nrow(results)){
       if(tmp$value > 0) tmp <- optim(par = rnorm(n), fn = search_sol)
     }
     if (tmp$value == 0) {
-      print("success")
+      print(paste0("Diversity: ", n, "Interaction order: ", d,  "Simulation: ", j, "success"))
     }
     prob <- prob + (tmp$value == 0)
   }
