@@ -4,6 +4,7 @@ njobs = length(args)
 for (i in 1:njobs){
   #name the job and output files
   jobname = paste0(args[[i]])
+  filename = 
   output = paste0(jobname, ".out")
   error = paste0(jobname, ".err")
   #create a text file for ith job
@@ -15,8 +16,8 @@ for (i in 1:njobs){
          "\n#SBATCH --error=", error,
          "\n#SBATCH --time=10:00:00",
          "\n#SBATCH --partition=caslake",
-         "\n#SBATCH --nodes=1",
-         "\n#SBATCH --ntasks-per-node=1",
+         "\n#SBATCH --nodes=4",
+         "\n#SBATCH --ntasks-per-node=14",
          "\n#SBATCH --mem-per-cpu=2000\n",
          "\nmodule load R/4.2.0",
          "\nRscript ", jobname,".r\n",
