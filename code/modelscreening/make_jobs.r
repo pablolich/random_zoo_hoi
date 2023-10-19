@@ -21,6 +21,7 @@ for (i in 1:njobs){
          "\nmodule load R/4.2.0",
          "\nRscript ", jobname,".r\n",
          "\nmv ", jobname, ".sbatch runfiles",
-         "\nmv ", jobname, ".* outputfiles\n"))
+         "\nmv ", jobname, ".* outputfiles",
+         "\nmv outputfiles/", jobname, ".r .\n"))
   sink()
 }

@@ -14,3 +14,4 @@ Rscript glv_type1.r
 
 mv glv_type1.sbatch runfiles
 mv glv_type1.* outputfiles
+mv outputfiles/glv_type1.r .
