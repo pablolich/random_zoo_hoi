@@ -7,7 +7,7 @@ for (i in 1:njobs){
   output = paste0(jobname, ".out")
   error = paste0(jobname, ".err")
   #create a text file for ith job
-  sink(paste0("run", jobname, ".sbatch"))
+  sink(paste0(jobname, ".sbatch"))
   cat(paste0("#!/bin/bash",
          "\n#SBATCH --job-name=", jobname,
          "\n#SBATCH --account=pi-salesina",
