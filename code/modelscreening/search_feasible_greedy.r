@@ -121,5 +121,5 @@ for (i in 1:nrow(results)){
   #once all simulations are completed for a given n, estimate probability of 
   #feasibility numerically
   results[i,2] = nfeasible/nsim
+  write.table(results, file = paste0("results/", output_name, ".csv"), row.names = FALSE)
 }
-write.table(results, file = paste0("results/", output_name, ".csv"), row.names = FALSE)
