@@ -56,8 +56,6 @@ sample_parameters <- function(n, nneigh){
 
 #set maximum diversity
 maxn = 2
-#set model
-model = dxdt_type1
 #name of parametrization
 parameters_label = "standardnohand"
 #name of file to save

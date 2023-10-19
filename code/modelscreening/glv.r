@@ -10,8 +10,6 @@ sample_parameters <- function(n, nneigh){
 
 #set maximum diversity
 maxn = 2
-#set model
-model = dxdt_type1
 #name of parametrization
 parameters_label = "randomzoo"
 #name of file to save
